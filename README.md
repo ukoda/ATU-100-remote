@@ -4,17 +4,11 @@ This is a firmware for using the popular open source ATU-100 Antenna Tuner in re
 
 This is very useful, for example, to have the tuner right at the feedpoint of the antenna.
 
-
 ## Build instructions
 
-To compile it, just download and install Microchip MPLAB-X IDE and XC8 compiler:
+Build docker image from https://github.com/zsteva/mplab-pic-xc8-builder
 
-https://www.microchip.com/en-us/tools-resources/develop/mplab-x-ide
-
-https://www.microchip.com/en-us/tools-resources/develop/mplab-xc-compilers
-
-Open the project, click on the hammer icon (Build Project) and that's it. It should  compile on first try without any errors on most systems.
-
+then start docker.sh and run make
 
 ## How to program
 
@@ -43,6 +37,10 @@ The tuner sends almost the same text that is send to the display on the original
 ## Acknowledgements
 
 This code is derived from:
+
+https://github.com/edsonbrusque/ATU-100
+
+Which is derived from:
 
 https://github.com/WA1RCT/N7DDC-ATU-100-mini-and-extended-boards
 
