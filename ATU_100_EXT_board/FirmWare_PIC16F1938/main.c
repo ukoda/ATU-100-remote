@@ -17,7 +17,7 @@ int g_i_SWR_fixed_old = 0;
 char g_work_str[7], g_work_str_2[7];
 int g_i_Power = 0, g_i_Power_old = DEFAULT_INITIAL_OLD_VALUE;
 int g_i_SWR_old = DEFAULT_INITIAL_OLD_VALUE;
-char e_c_ledtype, g_b_Soft_tune = 0;
+char g_b_Soft_tune = 0;
 char g_b_Auto_mode = 0;
 
 char g_b_Bypas_mode = 0;
@@ -82,11 +82,6 @@ void main() {
     Delay_ms(300);
     CLRWDT();
     cells_init();
-
-    if (e_c_ledtype == 0) { // 2-colors led  reset  turn both off
-        GREEN_LED = LED_OFF;
-        RED_LED = LED_OFF;
-    }
 
     //
     Delay_ms(300);
@@ -177,15 +172,9 @@ void button_proc_test(void) {
             else
                 g_b_L = 1;
             if (g_b_L == 1) {
-                if (e_c_ledtype == 4 | e_c_ledtype == 5) // 128*64 OLED
-                    uart_wr_str(0, 16 + 12 * 8, "l", 1);
-                else if (e_c_ledtype != 0) // 1602 LCD & 128*32 OLED
-                    uart_wr_str(0, 8, "l", 1);
+                uart_wr_str(0, 8, "l", 1);
             } else {
-                if (e_c_ledtype == 4 | e_c_ledtype == 5) // 128*64 OLED
-                    uart_wr_str(0, 16 + 12 * 8, "c", 1);
-                else if (e_c_ledtype != 0) // 1602 LCD & 128*32 OLED
-                    uart_wr_str(0, 8, "c", 1);
+                uart_wr_str(0, 8, "c", 1);
             }
         }
         while (Button(&PORTB, TUNE_BUTTON, 50, BUTTON_PRESSED)) {
@@ -287,21 +276,12 @@ void button_proc(void) {
                 lcd_ind();
             g_b_Auto_mode = g_c_Auto_mem;
         }
-        if (e_c_ledtype == 4 | e_c_ledtype == 5) { // 128*64 OLED
-            if (g_b_Auto_mode & !g_b_Bypas_mode)
-                uart_wr_str(0, 16 + 8 * 12, ".", 1);
-            else if ((!g_b_Auto_mode) & g_b_Bypas_mode)
-                uart_wr_str(0, 16 + 8 * 12, "_", 1);
-            else
-                uart_wr_str(0, 16 + 8 * 12, " ", 1);
-        } else if (e_c_ledtype != 0) { //  1602 LCD  or 128*32 OLED
-            if (g_b_Auto_mode & !g_b_Bypas_mode)
-                uart_wr_str(0, 8, ".", 1);
-            else if ((!g_b_Auto_mode) & g_b_Bypas_mode)
-                uart_wr_str(0, 8, "_", 1);
-            else
-                uart_wr_str(0, 8, " ", 1);
-        }
+        if (g_b_Auto_mode & !g_b_Bypas_mode)
+            uart_wr_str(0, 8, ".", 1);
+        else if ((!g_b_Auto_mode) & g_b_Bypas_mode)
+            uart_wr_str(0, 8, "_", 1);
+        else
+            uart_wr_str(0, 8, " ", 1);
         CLRWDT();
     }
 
@@ -313,21 +293,12 @@ void button_proc(void) {
         else
             g_b_Auto_mode = 0;
         eeprom_write(EEPROM_AUTOMATIC_MODE, g_b_Auto_mode);
-        if (e_c_ledtype == 4 | e_c_ledtype == 5) { // 128*64 OLED
-            if (g_b_Auto_mode & !g_b_Bypas_mode)
-                uart_wr_str(0, 16 + 8 * 12, ".", 1);
-            else if ((!g_b_Auto_mode) & g_b_Bypas_mode)
-                uart_wr_str(0, 16 + 8 * 12, "_", 1);
-            else
-                uart_wr_str(0, 16 + 8 * 12, " ", 1);
-        } else if (e_c_ledtype != 0) { //  1602 LCD  or 128*32 OLED
-            if (g_b_Auto_mode & !g_b_Bypas_mode)
-                uart_wr_str(0, 8, ".", 1);
-            else if ((!g_b_Auto_mode) & g_b_Bypas_mode)
-                uart_wr_str(0, 8, "_", 1);
-            else
-                uart_wr_str(0, 8, " ", 1);
-        }
+        if (g_b_Auto_mode & !g_b_Bypas_mode)
+            uart_wr_str(0, 8, ".", 1);
+        else if ((!g_b_Auto_mode) & g_b_Bypas_mode)
+            uart_wr_str(0, 8, "_", 1);
+        else
+            uart_wr_str(0, 8, " ", 1);
         CLRWDT();
     }
     return;
@@ -349,22 +320,11 @@ void show_reset() {
     g_i_SWR = 0;
     g_i_PWR = 0;
     g_i_SWR_fixed_old = 0;
-    if (e_c_ledtype == 4 | e_c_ledtype == 5) { // 128*64 OLED
-        uart_wr_str(2, 16, "RESET   ", 8);
-        CLRWDT();
-        Delay_ms(600);
-        uart_wr_str(2, 16, "SWR=0.00", 8);
-        CLRWDT();
-    } else if (e_c_ledtype != 0) { // 1602 LCD & 128*32 OLED
-        uart_wr_str(1, 0, "RESET   ", 8);
-        CLRWDT();
-        Delay_ms(600);
-        uart_wr_str(1, 0, "SWR=0.00", 8);
-        CLRWDT();
-    } else {
-        GREEN_LED = LED_OFF; /* turn off both LED's */
-        RED_LED = LED_OFF;
-    }
+    uart_wr_str(1, 0, "RESET   ", 8);
+    CLRWDT();
+    Delay_ms(600);
+    uart_wr_str(1, 0, "SWR=0.00", 8);
+    CLRWDT();
     g_i_SWR_old = DEFAULT_INITIAL_OLD_VALUE;
     g_i_Power_old = DEFAULT_INITIAL_OLD_VALUE;
     lcd_pwr();
@@ -373,29 +333,9 @@ void show_reset() {
 
 void tune_btn_push() {
     CLRWDT();
-    if (e_c_ledtype == 4 | e_c_ledtype == 5) { // 128*64 OLED
-        uart_wr_str(2, 16 + 12 * 4, "TUNE", 4);
-    } else if (e_c_ledtype != 0) { // 1602 LCD & 128*32 OLED
-        uart_wr_str(1, 4, "TUNE", 4);
-    } else {
-        GREEN_LED = LED_OFF; /* turn off both LED's */
-        RED_LED = LED_OFF;
-    }
+    uart_wr_str(1, 4, "TUNE", 4);
     tune();
-    if (e_c_ledtype == 0) { // real-time 2-colors led work
-        if (g_i_SWR <= 150) {
-            GREEN_LED = LED_ON; /* Is SWR < 1.5 then turn on green */
-            RED_LED = LED_OFF;
-        }// Green
-        else if (g_i_SWR <= 250) {
-            GREEN_LED = LED_ON; /* Is SWR < 2.5 then turn on both = orange */
-            RED_LED = LED_ON;
-        }// Orange
-        else {
-            GREEN_LED = LED_OFF;
-            RED_LED = LED_ON; /* Is SWR > 2.5 then turn on red */
-        } // Red
-    } else if (g_b_Loss_mode == 0 | e_c_b_Loss_ind == 0)
+    if (g_b_Loss_mode == 0 | e_c_b_Loss_ind == 0)
         lcd_ind();
     eeprom_write(EEPROM_LAST_CAP, g_c_cap);
     eeprom_write(EEPROM_LAST_IND, g_c_ind);
@@ -414,58 +354,32 @@ void tune_btn_push() {
 
 void lcd_prep() {
     CLRWDT();
-    if (e_c_ledtype == 4 | e_c_ledtype == 5) { // 128*64 OLED
-        if (g_b_lcd_prep_short == 0) {
-            uart_wr_str(0, 22, "ATU-100", 7);
-            uart_wr_str(2, 6, "EXT board", 9);
-            uart_wr_str(4, 16, "by N7DDC", 8);
-            uart_wr_str(6, 4, "FW ver 3.2", 10);
-            CLRWDT();
-            Delay_ms(600);
-            CLRWDT();
-            Delay_ms(500);
-            CLRWDT();
-            uart_wr_str(0, 16, "        ", 8);
-            uart_wr_str(2, 4, "          ", 10);
-            uart_wr_str(4, 16, "        ", 8);
-            uart_wr_str(6, 4, "          ", 10);
-        }
-        Delay_ms(150);
-        if (e_c_b_P_High == 1)
-            uart_wr_str(0, 16, "PWR=  0W", 8);
-        else
-            uart_wr_str(0, 16, "PWR=0.0W", 8);
-        uart_wr_str(2, 16, "SWR=0.00", 8);
-        if (g_b_Auto_mode)
-            uart_wr_str(0, 16 + 8 * 12, ".", 1);
-    } else if (e_c_ledtype != 0) { // 1602 LCD & 128*32 OLED
-        if (g_b_lcd_prep_short == 0) {
-            uart_wr_str(0, 4, "ATU-100", 7);
-            uart_wr_str(1, 3, "EXT board", 9);
-            CLRWDT();
-            Delay_ms(700);
-            CLRWDT();
-            Delay_ms(500);
-            CLRWDT();
-            uart_wr_str(0, 4, "by N7DDC", 8);
-            uart_wr_str(1, 3, "FW ver 3.2", 10);
-            CLRWDT();
-            Delay_ms(600);
-            CLRWDT();
-            Delay_ms(500);
-            CLRWDT();
-            uart_wr_str(0, 4, "        ", 8);
-            uart_wr_str(1, 3, "          ", 10);
-        }
-        Delay_ms(150);
-        if (e_c_b_P_High == 1)
-            uart_wr_str(0, 0, "PWR=  0W", 8);
-        else
-            uart_wr_str(0, 0, "PWR=0.0W", 8);
-        uart_wr_str(1, 0, "SWR=0.00", 8);
-        if (g_b_Auto_mode)
-            uart_wr_str(0, 8, ".", 1);
+    if (g_b_lcd_prep_short == 0) {
+        uart_wr_str(0, 4, "ATU-100", 7);
+        uart_wr_str(1, 3, "Rem board", 9);
+        CLRWDT();
+        Delay_ms(700);
+        CLRWDT();
+        Delay_ms(500);
+        CLRWDT();
+        uart_wr_str(0, 4, "by N7DDC", 8);
+        uart_wr_str(1, 3, "FW ver 3.2", 10);
+        CLRWDT();
+        Delay_ms(600);
+        CLRWDT();
+        Delay_ms(500);
+        CLRWDT();
+        uart_wr_str(0, 4, "        ", 8);
+        uart_wr_str(1, 3, "          ", 10);
     }
+    Delay_ms(150);
+    if (e_c_b_P_High == 1)
+        uart_wr_str(0, 0, "PWR=  0W", 8);
+    else
+        uart_wr_str(0, 0, "PWR=0.0W", 8);
+    uart_wr_str(1, 0, "SWR=0.00", 8);
+    if (g_b_Auto_mode)
+        uart_wr_str(0, 8, ".", 1);
     CLRWDT();
     lcd_ind();
     return;
@@ -476,14 +390,7 @@ void lcd_swr(int swr) {
     if (swr != g_i_SWR_old) {
         g_i_SWR_old = swr;
         if (swr == 0) { // Low power
-            if (e_c_ledtype == 4 | e_c_ledtype == 5)
-                uart_wr_str(2, 16 + 4 * 12, "0.00", 4); // 128*64 OLED
-            else if (e_c_ledtype != 0)
-                uart_wr_str(1, 4, "0.00", 4); // 1602  & 128*32 OLED
-            else if (e_c_ledtype == 0) { // real-time 2-colors led work
-                GREEN_LED = LED_OFF; /* turn off both leds */
-                RED_LED = LED_OFF;
-            }
+            uart_wr_str(1, 4, "0.00", 4); // 1602  & 128*32 OLED
             g_i_SWR_old = 0;
         } else {
             IntToStr(swr, g_work_str);
@@ -491,24 +398,7 @@ void lcd_swr(int swr) {
             g_work_str_2[1] = '.';
             g_work_str_2[2] = g_work_str[4];
             g_work_str_2[3] = g_work_str[5];
-            if (e_c_ledtype == 4 | e_c_ledtype == 5)
-                uart_wr_str(2, 16 + 4 * 12, g_work_str_2, 4); // 128*64 OLED
-            else if (e_c_ledtype != 0)
-                uart_wr_str(1, 4, g_work_str_2, 4); // 1602  & 128*32
-            else if (e_c_ledtype == 0) { // real-time 2-colors led work
-                if (swr <= 150) {
-                    GREEN_LED = LED_ON; /* Is SWR < 1.5 then turn on green */
-                    RED_LED = LED_OFF;
-                }// Green
-                else if (swr <= 250) {
-                    GREEN_LED = LED_ON; /* Is SWR < 2.5 then turn on both */
-                    RED_LED = LED_ON;
-                }// Orange
-                else {
-                    GREEN_LED = LED_OFF; /* Is SWR > 2.5 then turn on red */
-                    RED_LED = LED_ON;
-                } // Red
-            }
+            uart_wr_str(1, 4, g_work_str_2, 4); // 1602  & 128*32
         }
     }
     CLRWDT();
@@ -523,25 +413,11 @@ void show_pwr(int parm_Power, int parm_SWR) {
     //
     if (g_b_Test_mode == 0 & e_c_b_Loss_ind == 1 & parm_Power >= 10) {
         if (g_b_Loss_mode == 0) { // prepare
-            if (e_c_ledtype == 4 | e_c_ledtype == 5) { // 128*64 OLED
-                if (e_c_b_P_High == 1)
-                    uart_wr_str(4, 16, "ANT=  0W", 8);
-                else
-                    uart_wr_str(4, 16, "ANT=0.0W", 8);
-                uart_wr_str(6, 16, "EFF=  0%", 8);
-            } else if (e_c_ledtype == 2 | e_c_ledtype == 3) { // 128*32 OLED
-                if (e_c_b_P_High == 1)
-                    uart_wr_str(0, 9, "ANT=  0W", 8);
-                else
-                    uart_wr_str(0, 9, "ANT=0.0W", 8);
-                uart_wr_str(1, 9, "EFF=  0%", 8);
-            } else if (e_c_ledtype == 1) { // 1602 LCD
-                if (e_c_b_P_High == 1)
-                    uart_wr_str(0, 9, "AN=  0W", 7);
-                else
-                    uart_wr_str(0, 9, "AN=0.0W", 7);
-                uart_wr_str(1, 9, "EFF= 0%", 7);
-            }
+            if (e_c_b_P_High == 1)
+                uart_wr_str(0, 9, "AN=  0W", 7);
+            else
+                uart_wr_str(0, 9, "AN=0.0W", 7);
+            uart_wr_str(1, 9, "EFF= 0%", 7);
         }
         g_b_Loss_mode = 1;
     } else {
@@ -589,10 +465,7 @@ void show_pwr(int parm_Power, int parm_SWR) {
                 g_work_str_2[3] = g_work_str[5];
             }
         }
-        if (e_c_ledtype == 4 | e_c_ledtype == 5)
-            uart_wr_str(0, 16 + 4 * 12, g_work_str_2, 4); // 128*64 OLED
-        else if (e_c_ledtype != 0)
-            uart_wr_str(0, 4, g_work_str_2, 4); // 1602  & 128*32
+        uart_wr_str(0, 4, g_work_str_2, 4); // 1602  & 128*32
         //
         CLRWDT();
         //  Loss indication
@@ -646,22 +519,12 @@ void show_pwr(int parm_Power, int parm_SWR) {
                     g_work_str_2[3] = g_work_str[5];
                 }
             }
-            if (e_c_ledtype == 4 | e_c_ledtype == 5)
-                uart_wr_str(4, 16 + 4 * 12, g_work_str_2, 4); // 128*64 OLED
-            else if (e_c_ledtype == 2 | e_c_ledtype == 3)
-                uart_wr_str(0, 13, g_work_str_2, 4); // 128*32
-            else if (e_c_ledtype != 0)
-                uart_wr_str(0, 12, g_work_str_2, 4); // 1602
+            uart_wr_str(0, 12, g_work_str_2, 4); // 1602
             //
             IntToStr(eff, g_work_str);
             g_work_str_2[0] = g_work_str[4];
             g_work_str_2[1] = g_work_str[5];
-            if (e_c_ledtype == 4 | e_c_ledtype == 5)
-                uart_wr_str(6, 16 + 5 * 12, g_work_str_2, 2);
-            else if (e_c_ledtype == 2 | e_c_ledtype == 3)
-                uart_wr_str(1, 14, g_work_str_2, 2);
-            else if (e_c_ledtype == 1)
-                uart_wr_str(1, 13, g_work_str_2, 2);
+            uart_wr_str(1, 13, g_work_str_2, 2);
         }
     }
     CLRWDT();
@@ -704,49 +567,26 @@ void lcd_pwr() {
 
     CLRWDT();
     if (g_b_Overload == 1) {
-        if (e_c_ledtype == 4 | e_c_ledtype == 5) { // 128*64 OLED
-            uart_wr_str(2, 16, "        ", 8);
-            Delay_ms(100);
-            uart_wr_str(2, 16, "OVERLOAD", 8);
-            Delay_ms(500);
-            CLRWDT();
-            uart_wr_str(2, 16, "        ", 8);
-            Delay_ms(300);
-            CLRWDT();
-            uart_wr_str(2, 16, "OVERLOAD", 8);
-            Delay_ms(500);
-            CLRWDT();
-            uart_wr_str(2, 16, "        ", 8);
-            Delay_ms(300);
-            CLRWDT();
-            uart_wr_str(2, 16, "OVERLOAD", 8);
-            Delay_ms(500);
-            CLRWDT();
-            uart_wr_str(2, 16, "        ", 8);
-            Delay_ms(100);
-            uart_wr_str(2, 16, "SWR=    ", 8);
-        } else if (e_c_ledtype != 0) { // 1602  & 128*32
-            uart_wr_str(1, 0, "        ", 8);
-            Delay_ms(100);
-            uart_wr_str(1, 0, "OVERLOAD", 8);
-            Delay_ms(500);
-            CLRWDT();
-            uart_wr_str(1, 0, "        ", 8);
-            Delay_ms(300);
-            CLRWDT();
-            uart_wr_str(1, 0, "OVERLOAD", 8);
-            Delay_ms(500);
-            CLRWDT();
-            uart_wr_str(1, 0, "        ", 8);
-            Delay_ms(300);
-            CLRWDT();
-            uart_wr_str(1, 0, "OVERLOAD", 8);
-            Delay_ms(500);
-            CLRWDT();
-            uart_wr_str(1, 0, "        ", 8);
-            Delay_ms(100);
-            uart_wr_str(1, 0, "SW=     ", 8);
-        }
+        uart_wr_str(1, 0, "        ", 8);
+        Delay_ms(100);
+        uart_wr_str(1, 0, "OVERLOAD", 8);
+        Delay_ms(500);
+        CLRWDT();
+        uart_wr_str(1, 0, "        ", 8);
+        Delay_ms(300);
+        CLRWDT();
+        uart_wr_str(1, 0, "OVERLOAD", 8);
+        Delay_ms(500);
+        CLRWDT();
+        uart_wr_str(1, 0, "        ", 8);
+        Delay_ms(300);
+        CLRWDT();
+        uart_wr_str(1, 0, "OVERLOAD", 8);
+        Delay_ms(500);
+        CLRWDT();
+        uart_wr_str(1, 0, "        ", 8);
+        Delay_ms(100);
+        uart_wr_str(1, 0, "SW=     ", 8);
         CLRWDT();
         g_i_SWR_old = DEFAULT_INITIAL_OLD_VALUE;
         lcd_swr(SWR_fixed);
@@ -800,31 +640,13 @@ void lcd_ind() {
         else
             g_work_str_2[3] = '0';
     }
-    if (e_c_ledtype == 4 | e_c_ledtype == 5) { // 128*64 OLED
-        if (g_c_SW == 1)
-            l_line = 4;
-        else
-            l_line = 6;
-        uart_wr_str(l_line, 16, "L=", 2);
-        uart_wr_str(l_line, 16 + 6 * 12, "uH", 2);
-        uart_wr_str(l_line, 16 + 2 * 12, g_work_str_2, 4);
-    } else if (e_c_ledtype == 2 | e_c_ledtype == 3) { // 128*32 OLED
-        if (g_c_SW == 1)
-            l_line = 0;
-        else
-            l_line = 1;
-        uart_wr_str(l_line, 9, "L=", 2);
-        uart_wr_str(l_line, 15, "uH", 2);
-        uart_wr_str(l_line, 11, g_work_str_2, 4);
-    } else if (e_c_ledtype == 1) { //  1602 LCD
-        if (g_c_SW == 1)
-            l_line = 0;
-        else
-            l_line = 1;
-        uart_wr_str(l_line, 9, "L=", 2);
-        uart_wr_str(l_line, 15, "u", 1);
-        uart_wr_str(l_line, 11, g_work_str_2, 4);
-    }
+    if (g_c_SW == 1)
+        l_line = 0;
+    else
+        l_line = 1;
+    uart_wr_str(l_line, 9, "L=", 2);
+    uart_wr_str(l_line, 15, "u", 1);
+    uart_wr_str(l_line, 11, g_work_str_2, 4);
     /*  }  */
     CLRWDT();
     /*  if (1)
@@ -852,41 +674,20 @@ void lcd_ind() {
     g_work_str_2[2] = g_work_str[4];
     g_work_str_2[3] = g_work_str[5];
     //
-    if (e_c_ledtype == 4 | e_c_ledtype == 5) { // 128*64 OLED
-        if (g_c_SW == 1)
-            l_line = 6;
-        else
-            l_line = 4;
-        uart_wr_str(l_line, 16, "C=", 2);
-        uart_wr_str(l_line, 16 + 6 * 12, "pF", 2);
-        uart_wr_str(l_line, 16 + 2 * 12, g_work_str_2, 4);
-    } else if (e_c_ledtype == 2 | e_c_ledtype == 3) { // 128*32 OLED
-        if (g_c_SW == 1)
-            l_line = 1;
-        else
-            l_line = 0;
-        uart_wr_str(l_line, 9, "C=", 2);
-        uart_wr_str(l_line, 15, "pF", 2);
-        uart_wr_str(l_line, 11, g_work_str_2, 4);
-    } else if (e_c_ledtype == 1) { // 1602 LCD
-        if (g_c_SW == 1)
-            l_line = 1;
-        else
-            l_line = 0;
-        uart_wr_str(l_line, 9, "C=", 2);
-        uart_wr_str(l_line, 15, "p", 1);
-        uart_wr_str(l_line, 11, g_work_str_2, 4);
-    }
+    if (g_c_SW == 1)
+        l_line = 1;
+    else
+        l_line = 0;
+    uart_wr_str(l_line, 9, "C=", 2);
+    uart_wr_str(l_line, 15, "p", 1);
+    uart_wr_str(l_line, 11, g_work_str_2, 4);
     /*   }  */
     CLRWDT();
     return;
 }
 
 void Test_init(void) { // g_b_Test_mode mode
-    if (e_c_ledtype == 4 | e_c_ledtype == 5) // 128*64 OLED
-        uart_wr_str(0, 10, "TEST MODE", 9);
-    else if (e_c_ledtype != 0) // 1602 LCD  or 128*32 OLED
-        uart_wr_str(0, 3, "TEST MODE", 9);
+    uart_wr_str(0, 3, "TEST MODE", 9);
     CLRWDT();
     Delay_ms(500);
     CLRWDT();
@@ -896,10 +697,7 @@ void Test_init(void) { // g_b_Test_mode mode
     CLRWDT();
     Delay_ms(500);
     CLRWDT();
-    if (e_c_ledtype == 4 | e_c_ledtype == 5) // 128*64 OLED
-        uart_wr_str(0, 10, "         ", 9);
-    else if (e_c_ledtype != 0) // 1602 LCD  or 128*32 OLED
-        uart_wr_str(0, 3, "         ", 9);
+    uart_wr_str(0, 3, "         ", 9);
     atu_reset();
     g_c_SW = 1; // C to OUT
     set_sw(g_c_SW);
@@ -907,10 +705,7 @@ void Test_init(void) { // g_b_Test_mode mode
     eeprom_write(EEPROM_LAST_IND, g_c_ind);
     eeprom_write(EEPROM_LAST_SW, g_c_SW);
     //
-    if (e_c_ledtype == 4 | e_c_ledtype == 5) // 128*64 OLED
-        uart_wr_str(0, 16 + 12 * 8, "l", 1);
-    else if (e_c_ledtype != 0) // 1602 LCD or 128*32 OLED
-        uart_wr_str(0, 8, "l", 1);
+    uart_wr_str(0, 8, "l", 1);
     //
     g_b_lcd_prep_short = 1;
     lcd_prep();
@@ -920,8 +715,6 @@ void Test_init(void) { // g_b_Test_mode mode
 void cells_init(void) {
     // Cells init
     CLRWDT();
-    //oled_addr = eeprom_read(0); // address
-    e_c_ledtype = eeprom_read(EEPROM_DISPLAY_TYPE); // e_c_ledtype of display
     if (eeprom_read(EEPROM_AUTOMATIC_MODE) == 1)
         g_b_Auto_mode = 1;
     e_i_ms_Rel_Del = Bcd2Dec(eeprom_read(EEPROM_TIMEOUT_TIME)); // Relay's Delay
@@ -973,9 +766,6 @@ void show_loss(void) {
         g_work_str_2[0] = '0';
     g_work_str_2[1] = '.';
     g_work_str_2[2] = g_work_str[5];
-    if (e_c_ledtype == 4 | e_c_ledtype == 5)
-        uart_wr_str(4, 6, g_work_str_2, 3); // 128*64
-    else if (e_c_ledtype != 0)
-        uart_wr_str(1, 0, g_work_str_2, 3); // 1602 | 128*32
+    uart_wr_str(1, 0, g_work_str_2, 3); // 1602 | 128*32
     return;
 }

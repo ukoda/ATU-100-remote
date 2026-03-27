@@ -82,10 +82,7 @@ void simulator(void) {
 //    if ((PORTB_AUTO_BUTTON == BUTTON_PRESSED) &&
 //            (PORTB_BYPASS_BUTTON == BUTTON_PRESSED) &&
 //            (PORTB_TUNE_BUTTON == BUTTON_PRESSED)) { // Fast g_b_Test_mode mode (loop)
-//        if (e_c_ledtype == 4 | e_c_ledtype == 5)
-//            uart_wr_str(0, 12, "FAST TEST", 9); // 128*64
-//        else if (e_c_ledtype != 0)
-//            uart_wr_str(0, 3, "FAST TEST", 9); // 1602 | 128*32
+//        uart_wr_str(0, 3, "FAST TEST", 9); // 1602 | 128*32
 //        set_cap(255);
 //        if (e_c_b_L_invert == 0)
 //            set_ind(255);
@@ -103,14 +100,8 @@ void simulator(void) {
 //
 //    /*  feeder loss mode */
 //    if (Button(&PORTB, TUNE_BUTTON, 100, BUTTON_PRESSED)) { //  Fider loss input
-//        if (e_c_ledtype == 4 | e_c_ledtype == 5) {
-//            uart_wr_str(0, 6, "Fider Loss", 10); // 128*64
-//            uart_wr_str(2, 6, "input", 5);
-//            uart_wr_str(4, 6 + 3 * 12, "dB", 2);
-//        } else if (e_c_ledtype != 0) {
-//            uart_wr_str(0, 0, "Fider Loss input", 16); // 1602 | 128*32
-//            uart_wr_str(1, 3, "dB", 2);
-//        }
+//        uart_wr_str(0, 0, "Fider Loss input", 16); // 1602 | 128*32
+//        uart_wr_str(1, 3, "dB", 2);
 //        e_c_tenths_Fid_loss = Bcd2Dec(eeprom_read(EEPROM_FEEDER_LOSS));
 //        show_loss();
 //        //

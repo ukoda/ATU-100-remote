@@ -4,6 +4,10 @@ This is a firmware for using the popular open source ATU-100 Antenna Tuner in re
 
 This is very useful, for example, to have the tuner right at the feedpoint of the antenna.
 
+It assumes there is no local display so the eeprom cell settings related to the displays are ignored.
+
+Serial messages are JSON format with the assumption there will be external control software.
+
 ## Build instructions
 
 Build docker image from https://github.com/zsteva/mplab-pic-xc8-builder
@@ -14,12 +18,14 @@ then start docker.sh and run make
 
 The compiled hex file is on dist\default\production folder.
 
-Just load it on PICkit or any other tool you use for writing the microcontroller.
-
+Just load it on PICkit or any other tool you use for writing the microcontroller, e.g:
+`pk2cmd -B/your/path/to/pk2cmd -PPIC16F1938 -FATU_100_EXT_board/FirmWare_PIC16F1938/dist/default/production/FirmWare_PIC16F1938.production.hex -E -M -J -R`
 
 ## How to interface
 
 The serial routine runs at a baud-rate of 9600 bps.
+
+TODO: Redfine this as JSON mesages.
 
 To control the tuner you just need to send a character as if you were pressing a button on the original firmware. The firmware is case insensitive and the commands are:
 
@@ -37,6 +43,10 @@ The tuner sends almost the same text that is send to the display on the original
 ## Acknowledgements
 
 This code is derived from:
+
+https://github.com/zsteva/ATU-100-uart
+
+Which is derived from:
 
 https://github.com/edsonbrusque/ATU-100
 
