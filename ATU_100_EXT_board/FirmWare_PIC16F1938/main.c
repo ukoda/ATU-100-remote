@@ -6,6 +6,7 @@
 #include "uart.h"
 #include "json.h"
 #include "main.h"
+#include <stdbool.h>
 
 /*  a few constants */
 
@@ -18,6 +19,7 @@ int g_i_SWR_fixed_old = 0;
 char g_work_str[7], g_work_str_2[7];
 int g_i_Power = 0, g_i_Power_old = DEFAULT_INITIAL_OLD_VALUE;
 int g_i_SWR_old = DEFAULT_INITIAL_OLD_VALUE;
+int g_i_SWR_fixed;
 char g_b_Soft_tune = 0;
 char g_b_Auto_mode = 0;
 
@@ -30,6 +32,8 @@ char g_b_lcd_prep_short = 0;
 char g_b_L = 1;
 
 char g_b_Loss_mode = 0;
+
+bool new_state;
 
 /*  initial eeprom values*/
 // PP5OO - Cell 31 changed from 0x10 to 0x11 because of error on transformer winding.
@@ -51,6 +55,13 @@ __eeprom unsigned char initial_eeprom[256] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x01, 0x00, 0x00,
 };
+
+//***************** Forward declares *****************
+
+void send_state(void);
+
+
+
 
 void __interrupt() isr(void) {
     if (TMR0IE && TMR0IF) {
@@ -141,6 +152,9 @@ void main() {
             button_proc();
         else
             button_proc_test();
+
+        send_state();
+
         //
 //        if (g_b_Test_mode == 0 & g_b_display_onoff == 1) {
 //            if (e_c_b_Relay_off) {
@@ -156,6 +170,20 @@ void main() {
 }
 
 //***************** Routines *****************
+
+void send_state(void)
+{
+    if (!new_state)
+        return;
+    
+    new_state = false;
+    json_start();
+    json_bool("auto", g_b_Auto_mode);
+    json_bool("bypass", g_b_Bypas_mode);
+    json_int("swr", g_i_SWR_fixed, 2);
+    json_end();
+}
+
 
 void button_proc_test(void) {
     if (Button(&PORTB, TUNE_BUTTON, 50, BUTTON_PRESSED)) { // Tune btn
@@ -230,6 +258,7 @@ void button_proc(void) {
         CLRWDT();
         show_reset();
         g_b_Bypas_mode = 0;
+        new_state = true;
     }
 
     // TUNE
@@ -242,6 +271,7 @@ void button_proc(void) {
         tune_btn_push();
         g_b_Bypas_mode = 0;
         g_b_Soft_tune = 0;
+        new_state = true;
     }
 
 
@@ -285,6 +315,7 @@ void button_proc(void) {
         else
             uart_wr_str(0, 8, " ", 1);
         CLRWDT();
+        new_state = true;
     }
 
     // AUTO
@@ -302,6 +333,7 @@ void button_proc(void) {
         else
             uart_wr_str(0, 8, " ", 1);
         CLRWDT();
+        new_state = true;
     }
     return;
 }
@@ -322,10 +354,9 @@ void show_reset() {
     g_i_SWR = 0;
     g_i_PWR = 0;
     g_i_SWR_fixed_old = 0;
-    uart_wr_str(1, 0, "RESET   ", 8);
-    CLRWDT();
-    Delay_ms(600);
-    uart_wr_str(1, 0, "SWR=0.00", 8);
+    json_start();
+    json_str("event", "Reset");
+    json_end();
     CLRWDT();
     g_i_SWR_old = DEFAULT_INITIAL_OLD_VALUE;
     g_i_Power_old = DEFAULT_INITIAL_OLD_VALUE;
@@ -335,7 +366,9 @@ void show_reset() {
 
 void tune_btn_push() {
     CLRWDT();
-    uart_wr_str(1, 4, "TUNE", 4);
+    json_start();
+    json_str("event", "Tune");
+    json_end();
     tune();
     if (g_b_Loss_mode == 0 | e_c_b_Loss_ind == 0)
         lcd_ind();
@@ -375,6 +408,7 @@ void lcd_prep() {
         uart_wr_str(0, 8, ".", 1);
     CLRWDT();
     lcd_ind();
+    new_state = true;
     return;
 }
 
@@ -383,8 +417,9 @@ void lcd_swr(int swr) {
     if (swr != g_i_SWR_old) {
         g_i_SWR_old = swr;
         if (swr == 0) { // Low power
-            uart_wr_str(1, 4, "0.00", 4); // 1602  & 128*32 OLED
+//            uart_wr_str(1, 4, "0.00", 4); // 1602  & 128*32 OLED
             g_i_SWR_old = 0;
+/*            
         } else {
             IntToStr(swr, g_work_str);
             g_work_str_2[0] = g_work_str[3];
@@ -392,7 +427,9 @@ void lcd_swr(int swr) {
             g_work_str_2[2] = g_work_str[4];
             g_work_str_2[3] = g_work_str[5];
             uart_wr_str(1, 4, g_work_str_2, 4); // 1602  & 128*32
+*/
         }
+        new_state = true;
     }
     CLRWDT();
     return;
@@ -529,7 +566,6 @@ void lcd_pwr() {
     char peak_cnt;
     int delta = e_i_tenths_SWR_Auto_delta - 100;
     char cnt;
-    int SWR_fixed;
     g_i_PWR = 0;
     CLRWDT();
 
@@ -539,7 +575,7 @@ void lcd_pwr() {
         get_pwr();
         if (g_i_PWR > p) {
             p = g_i_PWR;
-            SWR_fixed = g_i_SWR;
+            g_i_SWR_fixed = g_i_SWR;
         }
         Delay_ms(3);
     }
@@ -550,39 +586,22 @@ void lcd_pwr() {
     } // round to 1 W if more then 100 W
     g_i_Power = p;
     if (g_i_Power < 10)
-        SWR_fixed = 0;
-    lcd_swr(SWR_fixed);
+        g_i_SWR_fixed = 0;
+    lcd_swr(g_i_SWR_fixed);
     //
-    if (g_b_Auto_mode & (SWR_fixed >= e_i_tenths_SWR_Auto_delta) & ((SWR_fixed > g_i_SWR_fixed_old & (SWR_fixed - g_i_SWR_fixed_old) > delta) | (SWR_fixed < g_i_SWR_fixed_old & (g_i_SWR_fixed_old - SWR_fixed) > delta) | g_i_SWR_fixed_old == 999))
+    if (g_b_Auto_mode & (g_i_SWR_fixed >= e_i_tenths_SWR_Auto_delta) & ((g_i_SWR_fixed > g_i_SWR_fixed_old & (g_i_SWR_fixed - g_i_SWR_fixed_old) > delta) | (g_i_SWR_fixed < g_i_SWR_fixed_old & (g_i_SWR_fixed_old - g_i_SWR_fixed) > delta) | g_i_SWR_fixed_old == 999))
         g_b_Soft_tune = 1;
 
-    show_pwr(g_i_Power, SWR_fixed);
+    show_pwr(g_i_Power, g_i_SWR_fixed);
 
     CLRWDT();
     if (g_b_Overload == 1) {
-        uart_wr_str(1, 0, "        ", 8);
-        Delay_ms(100);
-        uart_wr_str(1, 0, "OVERLOAD", 8);
-        Delay_ms(500);
-        CLRWDT();
-        uart_wr_str(1, 0, "        ", 8);
-        Delay_ms(300);
-        CLRWDT();
-        uart_wr_str(1, 0, "OVERLOAD", 8);
-        Delay_ms(500);
-        CLRWDT();
-        uart_wr_str(1, 0, "        ", 8);
-        Delay_ms(300);
-        CLRWDT();
-        uart_wr_str(1, 0, "OVERLOAD", 8);
-        Delay_ms(500);
-        CLRWDT();
-        uart_wr_str(1, 0, "        ", 8);
-        Delay_ms(100);
-        uart_wr_str(1, 0, "SW=     ", 8);
+        json_start();
+        json_str("event", "Overload");
+        json_end();
         CLRWDT();
         g_i_SWR_old = DEFAULT_INITIAL_OLD_VALUE;
-        lcd_swr(SWR_fixed);
+        lcd_swr(g_i_SWR_fixed);
     }
     return;
 }

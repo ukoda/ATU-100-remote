@@ -58,7 +58,7 @@ From ATU, any field may be omitted if unchanged:
 
 ## To do
 
-I
+Change number in JSON from string type to number with decimal point scaling
 
 ## Acknowledgements
 

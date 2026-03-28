@@ -77,15 +77,22 @@ void uart_wr_str(char lin, char col, char str[], char len) {
 void uart_str(char *str) {
     uint8_t len = 0;
 
+    // Wait for any active send to finish
+
+    while(refresh)
+        CLRWDT();
+
+    // Copy string to buffer
+
     while (str[len]) {
         buffer[len] = str[len];
         len++;
     }
 
+    // Kick off send
+
     txlen = len;
-    refresh = true; // Kick off send
-    while(refresh)  // Wait for send to complete
-        CLRWDT();
+    refresh = true;
 }
 
 
