@@ -7,6 +7,7 @@
       <itemPath>main.h</itemPath>
       <itemPath>cross_compiler.h</itemPath>
       <itemPath>uart.h</itemPath>
+      <itemPath>json.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -19,6 +20,7 @@
       <itemPath>pic_init.c</itemPath>
       <itemPath>cross_compiler.c</itemPath>
       <itemPath>uart.c</itemPath>
+      <itemPath>json.c</itemPath>
       <itemPath>test_modes.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"

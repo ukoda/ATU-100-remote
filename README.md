@@ -6,7 +6,7 @@ This is very useful, for example, to have the tuner right at the feedpoint of th
 
 It assumes there is no local display so the eeprom cell settings related to the displays are ignored.
 
-Serial messages are JSON format with the assumption there will be external control software.
+Serial messages are JSON format with the assumption there will be external control software.  Line endings are Linux style.
 
 ## Build instructions
 
@@ -39,6 +39,26 @@ To control the tuner you just need to send a character as if you were pressing a
 
 The tuner sends almost the same text that is send to the display on the original firmware whenever there's a change in status.
 
+## JSON messages
+
+From ATU, any field may be omitted if unchanged:
+```
+{
+    "Board": "ATU-100_EXT",
+    "Credit": "N7DDC",
+    "FW": "3.2",
+    "Build": "ukoda",
+    "Power": 85,
+    "SWR": 1.2,
+    "Order": "LC",
+    "Inductance": 100,
+    "Capacitance": 47
+}
+```
+
+## To do
+
+I
 
 ## Acknowledgements
 

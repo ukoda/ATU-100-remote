@@ -57,17 +57,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=main.c pic_init.c cross_compiler.c uart.c test_modes.c
+SOURCEFILES_QUOTED_IF_SPACED=main.c pic_init.c cross_compiler.c uart.c json.c test_modes.c
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/main.p1 ${OBJECTDIR}/pic_init.p1 ${OBJECTDIR}/cross_compiler.p1 ${OBJECTDIR}/uart.p1 ${OBJECTDIR}/test_modes.p1
-POSSIBLE_DEPFILES=${OBJECTDIR}/main.p1.d ${OBJECTDIR}/pic_init.p1.d ${OBJECTDIR}/cross_compiler.p1.d ${OBJECTDIR}/uart.p1.d ${OBJECTDIR}/test_modes.p1.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/main.p1 ${OBJECTDIR}/pic_init.p1 ${OBJECTDIR}/cross_compiler.p1 ${OBJECTDIR}/uart.p1 ${OBJECTDIR}/json.p1 ${OBJECTDIR}/test_modes.p1
+POSSIBLE_DEPFILES=${OBJECTDIR}/main.p1.d ${OBJECTDIR}/pic_init.p1.d ${OBJECTDIR}/cross_compiler.p1.d ${OBJECTDIR}/uart.p1.d ${OBJECTDIR}/json.p1.d ${OBJECTDIR}/test_modes.p1.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/main.p1 ${OBJECTDIR}/pic_init.p1 ${OBJECTDIR}/cross_compiler.p1 ${OBJECTDIR}/uart.p1 ${OBJECTDIR}/test_modes.p1
+OBJECTFILES=${OBJECTDIR}/main.p1 ${OBJECTDIR}/pic_init.p1 ${OBJECTDIR}/cross_compiler.p1 ${OBJECTDIR}/uart.p1 ${OBJECTDIR}/json.p1 ${OBJECTDIR}/test_modes.p1
 
 # Source Files
-SOURCEFILES=main.c pic_init.c cross_compiler.c uart.c test_modes.c
+SOURCEFILES=main.c pic_init.c cross_compiler.c uart.c json.c test_modes.c
 
 
 
@@ -126,6 +126,14 @@ ${OBJECTDIR}/uart.p1: uart.c  nbproject/Makefile-${CND_CONF}.mk
 	@-${MV} ${OBJECTDIR}/uart.d ${OBJECTDIR}/uart.p1.d 
 	@${FIXDEPS} ${OBJECTDIR}/uart.p1.d $(SILENT) -rsi ${MP_CC_DIR}../  
 	
+${OBJECTDIR}/json.p1: json.c  nbproject/Makefile-${CND_CONF}.mk 
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/json.p1.d 
+	@${RM} ${OBJECTDIR}/json.p1 
+	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -D__DEBUG=1  -mdebugger=none   -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -O2 -fasmfile -maddrqual=ignore -xassembler-with-cpp -mwarn=-9 -Wa,-a -DXPRJ_default=$(CND_CONF)  -msummary=-psect,-class,-mem,-hex,+file  -ginhx32 -Wl,--data-init -mno-keep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall -mdefault-config-bits $(COMPARISON_BUILD)  -std=c99 -gdwarf-3 -mstack=compiled:auto:auto     -o ${OBJECTDIR}/json.p1 json.c 
+	@-${MV} ${OBJECTDIR}/json.d ${OBJECTDIR}/json.p1.d 
+	@${FIXDEPS} ${OBJECTDIR}/json.p1.d $(SILENT) -rsi ${MP_CC_DIR}../  
+	
 ${OBJECTDIR}/test_modes.p1: test_modes.c  nbproject/Makefile-${CND_CONF}.mk 
 	@${MKDIR} "${OBJECTDIR}" 
 	@${RM} ${OBJECTDIR}/test_modes.p1.d 
@@ -166,6 +174,14 @@ ${OBJECTDIR}/uart.p1: uart.c  nbproject/Makefile-${CND_CONF}.mk
 	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c   -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -O2 -fasmfile -maddrqual=ignore -xassembler-with-cpp -mwarn=-9 -Wa,-a -DXPRJ_default=$(CND_CONF)  -msummary=-psect,-class,-mem,-hex,+file  -ginhx32 -Wl,--data-init -mno-keep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall -mdefault-config-bits $(COMPARISON_BUILD)  -std=c99 -gdwarf-3 -mstack=compiled:auto:auto     -o ${OBJECTDIR}/uart.p1 uart.c 
 	@-${MV} ${OBJECTDIR}/uart.d ${OBJECTDIR}/uart.p1.d 
 	@${FIXDEPS} ${OBJECTDIR}/uart.p1.d $(SILENT) -rsi ${MP_CC_DIR}../  
+	
+${OBJECTDIR}/json.p1: json.c  nbproject/Makefile-${CND_CONF}.mk 
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/json.p1.d 
+	@${RM} ${OBJECTDIR}/json.p1 
+	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c   -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -O2 -fasmfile -maddrqual=ignore -xassembler-with-cpp -mwarn=-9 -Wa,-a -DXPRJ_default=$(CND_CONF)  -msummary=-psect,-class,-mem,-hex,+file  -ginhx32 -Wl,--data-init -mno-keep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall -mdefault-config-bits $(COMPARISON_BUILD)  -std=c99 -gdwarf-3 -mstack=compiled:auto:auto     -o ${OBJECTDIR}/json.p1 json.c 
+	@-${MV} ${OBJECTDIR}/json.d ${OBJECTDIR}/json.p1.d 
+	@${FIXDEPS} ${OBJECTDIR}/json.p1.d $(SILENT) -rsi ${MP_CC_DIR}../  
 	
 ${OBJECTDIR}/test_modes.p1: test_modes.c  nbproject/Makefile-${CND_CONF}.mk 
 	@${MKDIR} "${OBJECTDIR}" 

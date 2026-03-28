@@ -36,7 +36,7 @@ void pic_init(void) {
 
     UART_IN_TRIS = 1;
     UART_OUT_TRIS = 0;
-
+    
     ADC_Init();
 
     ADCON1bits.ADPREF0 = 1; // ADC with the internal reference

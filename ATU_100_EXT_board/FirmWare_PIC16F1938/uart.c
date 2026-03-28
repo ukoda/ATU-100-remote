@@ -4,34 +4,33 @@
 #define MYONE 1
 #define MYZERO 0
 
-#define CHAR_TAB 9
 #define CHAR_LF 10
 #define CHAR_CR 13
 
 
 #define BUFFER_LEN (32+5)
-static char buffer[BUFFER_LEN] = {
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, CHAR_TAB,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0x20, 0x20, CHAR_CR, CHAR_LF
-};
+static char buffer[BUFFER_LEN] = "                                    \n";
 
-bool refresh = false;
+
+volatile bool refresh = false;
+uint8_t       txlen   = BUFFER_LEN;
+
+void uart_init(void) {
+    UART_OUT_PIN = MYONE; // Set line to idle state
+}
+
 
 void uartProcessOutput(void) {
-    static uint8_t strPosition = 0;
-    static uint8_t chrPosition = 0;
+    static uint8_t strPosition = 0;     // Charcter location in string
+    static uint8_t chrPosition = 0;     // Bit in character
 
     static uint8_t buf = 0x00;
 
     if (chrPosition == 0) {
         if (refresh) {
-            if (strPosition < BUFFER_LEN) {
+            if (strPosition < txlen) {
                 UART_OUT_PIN = MYZERO; // Start bit
                 buf = buffer[strPosition];
-            } else {
-                buf = 0xFF;
             }
             chrPosition++;
         }
@@ -49,9 +48,8 @@ void uartProcessOutput(void) {
     } else {
         chrPosition = 0;
         strPosition++;
-        if (strPosition == BUFFER_LEN) {
+        if (strPosition == txlen) {
             refresh = false;
-        } else if (strPosition > 137) {
             strPosition = 0;
         }
     }
@@ -59,17 +57,37 @@ void uartProcessOutput(void) {
 
 void uart_wr_str(char lin, char col, char str[], char len) {
     char pos = lin * 16 + col;
-    
+
+    buffer[15] = ' ';
+    buffer[16] = ' ';
+    buffer[36] = '\n';
+
     if (pos >= 16) pos++;
     
     for (uint8_t i = 0; i < len; i++) {
-        if (pos == 16) {
-            buffer[pos++] = CHAR_TAB;
-        }
+        if (pos == 16)
+            pos++;
         buffer[pos++] = str[i];
     }
+    txlen   = BUFFER_LEN;
     refresh = true;
 }
+
+
+void uart_str(char *str) {
+    uint8_t len = 0;
+
+    while (str[len]) {
+        buffer[len] = str[len];
+        len++;
+    }
+
+    txlen = len;
+    refresh = true; // Kick off send
+    while(refresh)  // Wait for send to complete
+        CLRWDT();
+}
+
 
 ////////////////////////////////////////
 

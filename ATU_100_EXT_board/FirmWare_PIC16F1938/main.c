@@ -4,6 +4,7 @@
 
 #include "cross_compiler.h"
 #include "uart.h"
+#include "json.h"
 #include "main.h"
 
 /*  a few constants */
@@ -75,6 +76,7 @@ void main() {
         g_b_Restart = 1;
 
     pic_init();
+    uart_init();
 
     interrupt_init();
 
@@ -355,22 +357,13 @@ void tune_btn_push() {
 void lcd_prep() {
     CLRWDT();
     if (g_b_lcd_prep_short == 0) {
-        uart_wr_str(0, 4, "ATU-100", 7);
-        uart_wr_str(1, 3, "Rem board", 9);
-        CLRWDT();
-        Delay_ms(700);
-        CLRWDT();
-        Delay_ms(500);
-        CLRWDT();
-        uart_wr_str(0, 4, "by N7DDC", 8);
-        uart_wr_str(1, 3, "FW ver 3.2", 10);
-        CLRWDT();
-        Delay_ms(600);
-        CLRWDT();
-        Delay_ms(500);
-        CLRWDT();
-        uart_wr_str(0, 4, "        ", 8);
-        uart_wr_str(1, 3, "          ", 10);
+        uart_str("\n");
+        json_start();
+        json_str("Board", "ATU-100_EXT");
+        json_str("Credit", "N7DDC");
+        json_str("FW", "3.2");
+        json_str("Build", "ukoda");
+        json_end();
     }
     Delay_ms(150);
     if (e_c_b_P_High == 1)
