@@ -55,6 +55,7 @@ void uartProcessOutput(void) {
     }
 }
 
+/*
 void uart_wr_str(char lin, char col, char str[], char len) {
     char pos = lin * 16 + col;
 
@@ -72,7 +73,7 @@ void uart_wr_str(char lin, char col, char str[], char len) {
     txlen   = BUFFER_LEN;
     refresh = true;
 }
-
+*/
 
 void uart_str(char *str) {
     uint8_t len = 0;

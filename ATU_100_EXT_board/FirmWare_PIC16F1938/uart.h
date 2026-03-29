@@ -11,6 +11,6 @@ void uartProcessOutput(void);
 char uartGetChar(void);
 
 void uart_str(char *str);
-void uart_wr_str(char, char, char *, char);
+//void uart_wr_str(char, char, char *, char);
 
 #endif

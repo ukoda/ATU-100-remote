@@ -214,9 +214,9 @@ void button_proc_test(void) {
             else
                 g_b_L = 1;
             if (g_b_L == 1) {
-                uart_wr_str(0, 8, "l", 1);
+                json_event("Inductor");
             } else {
-                uart_wr_str(0, 8, "c", 1);
+                json_event("Capacitor");
             }
         }
         while (Button(&PORTB, TUNE_BUTTON, 50, BUTTON_PRESSED)) {
@@ -320,12 +320,6 @@ void button_proc(void) {
                 lcd_ind();
             g_b_Auto_mode = g_c_Auto_mem;
         }
-        if (g_b_Auto_mode & !g_b_Bypas_mode)
-            uart_wr_str(0, 8, ".", 1);
-        else if ((!g_b_Auto_mode) & g_b_Bypas_mode)
-            uart_wr_str(0, 8, "_", 1);
-        else
-            uart_wr_str(0, 8, " ", 1);
         CLRWDT();
         new_state = true;
     }
@@ -338,12 +332,6 @@ void button_proc(void) {
         else
             g_b_Auto_mode = 0;
         eeprom_write(EEPROM_AUTOMATIC_MODE, g_b_Auto_mode);
-        if (g_b_Auto_mode & !g_b_Bypas_mode)
-            uart_wr_str(0, 8, ".", 1);
-        else if ((!g_b_Auto_mode) & g_b_Bypas_mode)
-            uart_wr_str(0, 8, "_", 1);
-        else
-            uart_wr_str(0, 8, " ", 1);
         CLRWDT();
         new_state = true;
     }
@@ -429,15 +417,6 @@ void show_pwr(int parm_Power, int parm_SWR) {
     CLRWDT();
     //
     if (g_b_Test_mode == 0 & e_c_b_Loss_ind == 1 & parm_Power >= 10) {
-        if (g_b_Loss_mode == 0) { // prepare
-/*            
-            if (e_c_b_P_High == 1)
-                uart_wr_str(0, 9, "AN=  0W", 7);
-            else
-                uart_wr_str(0, 9, "AN=0.0W", 7);
-            uart_wr_str(1, 9, "EFF= 0%", 7);
-*/            
-        }
         g_b_Loss_mode = 1;
     } else {
         if (g_b_Loss_mode == 1)
@@ -561,26 +540,13 @@ void lcd_ind() {
 }
 
 void Test_init(void) { // g_b_Test_mode mode
-    uart_wr_str(0, 3, "TEST MODE", 9);
-    CLRWDT();
-    Delay_ms(500);
-    CLRWDT();
-    Delay_ms(500);
-    CLRWDT();
-    Delay_ms(500);
-    CLRWDT();
-    Delay_ms(500);
-    CLRWDT();
-    uart_wr_str(0, 3, "         ", 9);
+    json_event("Test mode inductor");
     atu_reset();
     g_c_SW = 1; // C to OUT
     set_sw(g_c_SW);
     eeprom_write(EEPROM_LAST_CAP, g_c_cap);
     eeprom_write(EEPROM_LAST_IND, g_c_ind);
     eeprom_write(EEPROM_LAST_SW, g_c_SW);
-    //
-    uart_wr_str(0, 8, "l", 1);
-    //
     g_b_lcd_prep_short = 1;
     lcd_prep();
     return;
@@ -633,13 +599,8 @@ void cells_init(void) {
 }
 
 void show_loss(void) {
-    IntToStr(e_c_tenths_Fid_loss, g_work_str);
-    if (e_c_tenths_Fid_loss >= 10)
-        g_work_str_2[0] = g_work_str[4];
-    else
-        g_work_str_2[0] = '0';
-    g_work_str_2[1] = '.';
-    g_work_str_2[2] = g_work_str[5];
-    uart_wr_str(1, 0, g_work_str_2, 3); // 1602 | 128*32
+    json_start();
+    json_int("Loss", e_c_tenths_Fid_loss, 1);
+    json_end();
     return;
 }
