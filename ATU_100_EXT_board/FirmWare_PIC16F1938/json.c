@@ -79,3 +79,10 @@ void json_int(char *name, int value, uint8_t dp)
         pos--;
     uart_str(&str[pos+1]);
 }
+
+void json_event(char *event)
+{
+    json_start();
+    json_str("Event", event);
+    json_end();
+}

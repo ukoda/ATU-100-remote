@@ -17,9 +17,10 @@
 // Variables
 int g_i_SWR_fixed_old = 0;
 char g_work_str[7], g_work_str_2[7];
-int g_i_Power = 0, g_i_Power_old = DEFAULT_INITIAL_OLD_VALUE;
+int g_i_Power = 0, g_i_Power_old = DEFAULT_INITIAL_OLD_VALUE, g_i_Power_report = 0;
 int g_i_SWR_old = DEFAULT_INITIAL_OLD_VALUE;
 int g_i_SWR_fixed;
+int g_i_Efficency = 0;
 char g_b_Soft_tune = 0;
 char g_b_Auto_mode = 0;
 
@@ -173,14 +174,25 @@ void main() {
 
 void send_state(void)
 {
+    uint8_t sft;
     if (!new_state)
         return;
     
     new_state = false;
     json_start();
-    json_bool("auto", g_b_Auto_mode);
-    json_bool("bypass", g_b_Bypas_mode);
-    json_int("swr", g_i_SWR_fixed, 2);
+    json_bool("Auto", g_b_Auto_mode);
+    json_bool("Bypass", g_b_Bypas_mode);
+    if (g_i_Efficency > 0)
+        json_int("efficency", g_i_Efficency, 0);
+    if (e_c_b_P_High == 0)
+        sft = 1;
+    else
+        sft = 0;
+    json_int("Power", g_i_Power_report, sft);
+    json_int("SWR", g_i_SWR_fixed, 2);
+    json_str("Order", (g_c_SW == 1) ? "LC" : "CL");
+    json_int("Capacitance", g_i_cap, 0);
+    json_int("Inductance", g_i_ind, 0);
     json_end();
 }
 
@@ -354,9 +366,7 @@ void show_reset() {
     g_i_SWR = 0;
     g_i_PWR = 0;
     g_i_SWR_fixed_old = 0;
-    json_start();
-    json_str("event", "Reset");
-    json_end();
+    json_event("Reset");
     CLRWDT();
     g_i_SWR_old = DEFAULT_INITIAL_OLD_VALUE;
     g_i_Power_old = DEFAULT_INITIAL_OLD_VALUE;
@@ -366,9 +376,7 @@ void show_reset() {
 
 void tune_btn_push() {
     CLRWDT();
-    json_start();
-    json_str("event", "Tune");
-    json_end();
+    json_event("Tune");
     tune();
     if (g_b_Loss_mode == 0 | e_c_b_Loss_ind == 0)
         lcd_ind();
@@ -391,6 +399,7 @@ void lcd_prep() {
     CLRWDT();
     if (g_b_lcd_prep_short == 0) {
         uart_str("\n");
+        json_event("Startup");
         json_start();
         json_str("Board", "ATU-100_EXT");
         json_str("Credit", "N7DDC");
@@ -398,14 +407,6 @@ void lcd_prep() {
         json_str("Build", "ukoda");
         json_end();
     }
-    Delay_ms(150);
-    if (e_c_b_P_High == 1)
-        uart_wr_str(0, 0, "PWR=  0W", 8);
-    else
-        uart_wr_str(0, 0, "PWR=0.0W", 8);
-    uart_wr_str(1, 0, "SWR=0.00", 8);
-    if (g_b_Auto_mode)
-        uart_wr_str(0, 8, ".", 1);
     CLRWDT();
     lcd_ind();
     new_state = true;
@@ -413,22 +414,8 @@ void lcd_prep() {
 }
 
 void lcd_swr(int swr) {
-    CLRWDT();
     if (swr != g_i_SWR_old) {
         g_i_SWR_old = swr;
-        if (swr == 0) { // Low power
-//            uart_wr_str(1, 4, "0.00", 4); // 1602  & 128*32 OLED
-            g_i_SWR_old = 0;
-/*            
-        } else {
-            IntToStr(swr, g_work_str);
-            g_work_str_2[0] = g_work_str[3];
-            g_work_str_2[1] = '.';
-            g_work_str_2[2] = g_work_str[4];
-            g_work_str_2[3] = g_work_str[5];
-            uart_wr_str(1, 4, g_work_str_2, 4); // 1602  & 128*32
-*/
-        }
         new_state = true;
     }
     CLRWDT();
@@ -436,18 +423,20 @@ void lcd_swr(int swr) {
 }
 
 void show_pwr(int parm_Power, int parm_SWR) {
-    int p_ant, eff;
+    int p_ant;
     double a, b;
     a = 100;
     CLRWDT();
     //
     if (g_b_Test_mode == 0 & e_c_b_Loss_ind == 1 & parm_Power >= 10) {
         if (g_b_Loss_mode == 0) { // prepare
+/*            
             if (e_c_b_P_High == 1)
                 uart_wr_str(0, 9, "AN=  0W", 7);
             else
                 uart_wr_str(0, 9, "AN=0.0W", 7);
             uart_wr_str(1, 9, "EFF= 0%", 7);
+*/            
         }
         g_b_Loss_mode = 1;
     } else {
@@ -458,46 +447,7 @@ void show_pwr(int parm_Power, int parm_SWR) {
     CLRWDT();
     if (parm_Power != g_i_Power_old) {
         g_i_Power_old = parm_Power;
-        //
-        if (e_c_b_P_High == 0) {
-            if (parm_Power >= 100) { // > 10 W
-                parm_Power += 5; // rounding to 1 W
-                IntToStr(parm_Power, g_work_str);
-                g_work_str_2[0] = g_work_str[2];
-                g_work_str_2[1] = g_work_str[3];
-                g_work_str_2[2] = g_work_str[4];
-                g_work_str_2[3] = 'W';
-            } else {
-                IntToStr(parm_Power, g_work_str);
-                if (g_work_str[4] != ' ')
-                    g_work_str_2[0] = g_work_str[4];
-                else
-                    g_work_str_2[0] = '0';
-                g_work_str_2[1] = '.';
-                if (g_work_str[5] != ' ')
-                    g_work_str_2[2] = g_work_str[5];
-                else
-                    g_work_str_2[2] = '0';
-                g_work_str_2[3] = 'W';
-            }
-        } else { // High g_i_Power
-            if (parm_Power < 999) { // 0 - 999 Watt
-                IntToStr(parm_Power, g_work_str);
-                g_work_str_2[0] = g_work_str[3];
-                g_work_str_2[1] = g_work_str[4];
-                g_work_str_2[2] = g_work_str[5];
-                g_work_str_2[3] = 'W';
-            } else {
-                IntToStr(parm_Power, g_work_str);
-                g_work_str_2[0] = g_work_str[2];
-                g_work_str_2[1] = g_work_str[3];
-                g_work_str_2[2] = g_work_str[4];
-                g_work_str_2[3] = g_work_str[5];
-            }
-        }
-        uart_wr_str(0, 4, g_work_str_2, 4); // 1602  & 128*32
-        //
-        CLRWDT();
+        g_i_Power_report = parm_Power;
         //  Loss indication
         if (g_b_Loss_mode == 1) {
             if (g_c_ind == 0 & g_c_cap == 0)
@@ -509,53 +459,14 @@ void show_pwr(int parm_Power, int parm_SWR) {
             if (b >= 1.0)
                 b = 1.0;
             p_ant = (int) (parm_Power * a * b);
-            eff = (int) (a * b * 100);
-            if (eff >= 100)
-                eff = 99;
+            g_i_Efficency = (int) (a * b * 100);
+            if (g_i_Efficency >= 100)
+                g_i_Efficency = 99;
             //
-            if (e_c_b_P_High == 0) {
-                if (p_ant >= 100) { // > 10 W
-                    p_ant += 5; // rounding to 1 W
-                    IntToStr(p_ant, g_work_str);
-                    g_work_str_2[0] = g_work_str[2];
-                    g_work_str_2[1] = g_work_str[3];
-                    g_work_str_2[2] = g_work_str[4];
-                    g_work_str_2[3] = 'W';
-                } else {
-                    IntToStr(p_ant, g_work_str);
-                    if (g_work_str[4] != ' ')
-                        g_work_str_2[0] = g_work_str[4];
-                    else
-                        g_work_str_2[0] = '0';
-                    g_work_str_2[1] = '.';
-                    if (g_work_str[5] != ' ')
-                        g_work_str_2[2] = g_work_str[5];
-                    else
-                        g_work_str_2[2] = '0';
-                    g_work_str_2[3] = 'W';
-                }
-            } else { // High g_i_Power
-                if (p_ant < 999) { // 0 - 1500 Watts
-                    IntToStr(p_ant, g_work_str);
-                    g_work_str_2[0] = g_work_str[3];
-                    g_work_str_2[1] = g_work_str[4];
-                    g_work_str_2[2] = g_work_str[5];
-                    g_work_str_2[3] = 'W';
-                } else {
-                    IntToStr(p_ant, g_work_str);
-                    g_work_str_2[0] = g_work_str[2];
-                    g_work_str_2[1] = g_work_str[3];
-                    g_work_str_2[2] = g_work_str[4];
-                    g_work_str_2[3] = g_work_str[5];
-                }
-            }
-            uart_wr_str(0, 12, g_work_str_2, 4); // 1602
+            g_i_Power_report = p_ant;
             //
-            IntToStr(eff, g_work_str);
-            g_work_str_2[0] = g_work_str[4];
-            g_work_str_2[1] = g_work_str[5];
-            uart_wr_str(1, 13, g_work_str_2, 2);
         }
+        new_state = true;
     }
     CLRWDT();
     return;
@@ -596,9 +507,7 @@ void lcd_pwr() {
 
     CLRWDT();
     if (g_b_Overload == 1) {
-        json_start();
-        json_str("event", "Overload");
-        json_end();
+        json_event("Overload");
         CLRWDT();
         g_i_SWR_old = DEFAULT_INITIAL_OLD_VALUE;
         lcd_swr(g_i_SWR_fixed);
@@ -610,8 +519,6 @@ void lcd_ind() {
     char l_line;
     int l_work_int;
     CLRWDT();
-    /*  if (1)
-      {  */
     charbits indbits;
     indbits.bytes = g_c_ind;
     l_work_int = 0;
@@ -629,40 +536,8 @@ void lcd_ind() {
         l_work_int += e_i_Ind6;
     if (indbits.bits.B6)
         l_work_int += e_i_Ind7;
-    if (l_work_int > 9999) { // more then 9999 nH
-        l_work_int += 50; // round
-        IntToStr(l_work_int, g_work_str);
-        g_work_str_2[0] = g_work_str[1];
-        g_work_str_2[1] = g_work_str[2];
-        g_work_str_2[2] = '.';
-        g_work_str_2[3] = g_work_str[3];
-    } else {
-        IntToStr(l_work_int, g_work_str);
-        if (g_work_str[2] != ' ')
-            g_work_str_2[0] = g_work_str[2];
-        else
-            g_work_str_2[0] = '0';
-        g_work_str_2[1] = '.';
-        if (g_work_str[3] != ' ')
-            g_work_str_2[2] = g_work_str[3];
-        else
-            g_work_str_2[2] = '0';
-        if (g_work_str[4] != ' ')
-            g_work_str_2[3] = g_work_str[4];
-        else
-            g_work_str_2[3] = '0';
-    }
-    if (g_c_SW == 1)
-        l_line = 0;
-    else
-        l_line = 1;
-    uart_wr_str(l_line, 9, "L=", 2);
-    uart_wr_str(l_line, 15, "u", 1);
-    uart_wr_str(l_line, 11, g_work_str_2, 4);
-    /*  }  */
+    g_i_ind = l_work_int;
     CLRWDT();
-    /*  if (1)
-      {  */
     l_work_int = 0;
     charbits capbits;
     capbits.bytes = g_c_cap;
@@ -680,20 +555,7 @@ void lcd_ind() {
         l_work_int += e_i_Cap6;
     if (capbits.bits.B6)
         l_work_int += e_i_Cap7;
-    IntToStr(l_work_int, g_work_str);
-    g_work_str_2[0] = g_work_str[2];
-    g_work_str_2[1] = g_work_str[3];
-    g_work_str_2[2] = g_work_str[4];
-    g_work_str_2[3] = g_work_str[5];
-    //
-    if (g_c_SW == 1)
-        l_line = 1;
-    else
-        l_line = 0;
-    uart_wr_str(l_line, 9, "C=", 2);
-    uart_wr_str(l_line, 15, "p", 1);
-    uart_wr_str(l_line, 11, g_work_str_2, 4);
-    /*   }  */
+    g_i_cap = l_work_int;
     CLRWDT();
     return;
 }

@@ -8,6 +8,7 @@
 //
 static char g_c_ind = 0, g_c_cap = 0;
 static char g_c_SW = 0;
+static int g_i_ind = 0, g_i_cap = 0;
 static char g_c_step_cap = 0, g_c_step_ind = 0;
 static char g_c_L_mult = 1, g_c_C_mult = 1;
 int g_i_SWR, g_i_PWR, g_i_P_max, g_i_swr_a;
