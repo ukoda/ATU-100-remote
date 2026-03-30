@@ -55,25 +55,7 @@ void uartProcessOutput(void) {
     }
 }
 
-/*
-void uart_wr_str(char lin, char col, char str[], char len) {
-    char pos = lin * 16 + col;
 
-    buffer[15] = ' ';
-    buffer[16] = ' ';
-    buffer[36] = '\n';
-
-    if (pos >= 16) pos++;
-    
-    for (uint8_t i = 0; i < len; i++) {
-        if (pos == 16)
-            pos++;
-        buffer[pos++] = str[i];
-    }
-    txlen   = BUFFER_LEN;
-    refresh = true;
-}
-*/
 
 void uart_str(char *str) {
     uint8_t len = 0;
@@ -132,8 +114,6 @@ void uartProcessInput(void) {
         case STOP_BIT:
             if (inbit == MYONE) {
                 inbuf = buf;
-                buffer[BUFFER_LEN - 3] = buf;
-                refresh = true;
             }
             state = START_BIT;
             break;
