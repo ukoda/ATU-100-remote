@@ -48,6 +48,7 @@ MKDIR=mkdir
 CP=cp
 CCADMIN=CCadmin
 RANLIB=ranlib
+NOW := $(shell date +"%Y%m%d_%H%M")
 
 
 # build
@@ -58,7 +59,7 @@ build: .build-post
 
 .build-post: .build-impl
 # Add your post 'build' code here...
-
+	cp ./dist/default/production/FirmWare_PIC16F1938.production.hex ../../ATU-100_remote_PIC16F1938_$(NOW).hex
 
 # clean
 clean: .clean-post
