@@ -43,45 +43,34 @@ SCREEN_WIDTH  = 41
 SCREEN_HEIGHT =  7
 
 SDATA_FIRST        = 10
-SDATA_FIRST_WIDTH  =  7
+SDATA_FIRST_WIDTH  =  8
 SDATA_SECOND       = 35
-SDATA_SECOND_WIDTH = 10
+SDATA_SECOND_WIDTH =  8
 
-AUTO_R    = 4
-AUTO_C    = SDATA_FIRST
-AUTO_W    = 8
+POWER_R     = 1
+POWER_C     = SDATA_FIRST
 
-BYPASS_R  = 4
-BYPASS_C  = SDATA_SECOND
-BYPASS_W  =8
+SWR_R       = 2
+SWR_C       = SDATA_FIRST
 
-STATE_R     = 2
-STATE_C     = SDATA_FIRST
-STATE_W     = SDATA_FIRST_WIDTH + 2
+REVERSE_R   = 3
+REVERSE_C   = SDATA_FIRST
 
-LEVEL_R     = 3
-LEVEL_C     = SDATA_FIRST
-LEVEL_W     = SDATA_FIRST_WIDTH
+AUTO_R      = 4
+AUTO_C      = SDATA_FIRST
 
-VOLTAGE_R   = 4
-VOLTAGE_C   = SDATA_FIRST
-VOLTAGE_W   = SDATA_FIRST_WIDTH
+ORDER_R     = 1
+ORDER_C     = SDATA_SECOND
 
-CURRENT_R   = 5
-CURRENT_C   = SDATA_FIRST
-CURRENT_W   = SDATA_FIRST_WIDTH
+CAP_R       = 2
+CAP_C       = SDATA_SECOND
 
-MAX_V_R     = 3
-MAX_V_C     = SDATA_SECOND
-MAX_V_W     = SDATA_SECOND_WIDTH
+IND_R       = 3
+IND_C       = SDATA_SECOND
 
-MIN_V_R     = 4
-MIN_V_C     = SDATA_SECOND
-MIN_V_W     = SDATA_SECOND_WIDTH
+BYPASS_R    = 4
+BYPASS_C    = SDATA_SECOND
 
-CAPACITY_R  = 5
-CAPACITY_C  = SDATA_SECOND
-CAPACITY_W  = SDATA_SECOND_WIDTH
 
 
 
@@ -96,25 +85,10 @@ class atu_100(object):
         self.bypass      = False
         self.power       = 0.0
         self.swr         = 0.0
+        self.reverse     = 0.0
         self.order       = 'LC'
         self.capacitance = 0
         self.inductance  = 0
-
-        # Stuff in battery defintion file
-        self.bat_percent  = 0.0 # Battery charge percentage NB: Use set_bat_percentage() to set to keep bat_volts in sync
-        self.bat_min_v    = 0.0 # Battery minimum voltage
-        self.bat_max_v    = 0.0 # Battery maximum charge
-        self.bat_capacity = 0.0 # Battery capacity in Ah
-        # Stuff not in battery defintion file
-        self.bat_volts    = 0.0 # Battery voltage NB: Use set_bat_voltage() to set to keep bat_percent in sync
-        self.bat_current  = 0.0 # Battery current, positive is charing, negative is discharging
-        self.scpi_volts   = 0.0 # Last voltage sent to SCPI devices
-        self.psu = None         # SCPI Power Supply
-        self.dcl = None         # SCPI DC Load
-        self.current_psu  = 0.0 # Current bing pulled from PSU
-        self.current_dcl  = 0.0 # Current bing sunk into DCL
-        self.state = 'Startup'  # Operating state of the battery
-        self.state_start = datetime.now()
 
         # Get the command line args
 
@@ -205,7 +179,7 @@ class atu_100(object):
 
         # Render the static status text
         self.swin.addstr(1, 1, 'Power:      ---.- W  Order:             --')
-        self.swin.addstr(2, 1, 'SWR:        -.---    Capacitance:    ----- pF')
+        self.swin.addstr(2, 1, 'SWR:         -.--    Capacitance:    ----- pF')
         self.swin.addstr(3, 1, 'Reverse:    ---.- w  Inductance:     ----- nH')
         self.swin.addstr(4, 1, 'Auto:    --------    Bypass:      -------- ')
 
@@ -218,53 +192,37 @@ class atu_100(object):
     def update_var(self, var, value, attr = C_GOOD_DATA):
         width = SDATA_FIRST_WIDTH
         rjust = True
-        if var == 'Auto':
+        if var == 'Power':
+            r = POWER_R
+            c = POWER_C
+
+        elif var == 'SWR':
+            r = SWR_R
+            c = SWR_C
+
+        elif var == 'Reverse':
+            r = REVERSE_R
+            c = REVERSE_C
+
+        elif var == 'Auto':
             r = AUTO_R
             c = AUTO_C
-            width = AUTO_W
-            rjust = True
+
+        elif var == 'Order':
+            r = ORDER_R
+            c = ORDER_C
+
+        elif var == 'Capacitance':
+            r = CAP_R
+            c = CAP_C
+
+        elif var == 'Inductance':
+            r = IND_R
+            c = IND_C
 
         elif var == 'Bypass':
             r = BYPASS_R
             c = BYPASS_C
-            width = BYPASS_W
-            rjust = True
-
-        elif var == 'State':
-            r = STATE_R
-            c = STATE_C
-            width = STATE_W
-            rjust = False
-
-        elif var == 'Level':
-            r = LEVEL_R
-            c = LEVEL_C
-            width = LEVEL_W
-
-        elif var == 'Voltage':
-            r = VOLTAGE_R
-            c = VOLTAGE_C
-            width = VOLTAGE_W
-
-        elif var == 'Current':
-            r = CURRENT_R
-            c = CURRENT_C
-            width = CURRENT_W
-
-        elif var == 'Max_V':
-            r = MAX_V_R
-            c = MAX_V_C
-            width = MAX_V_W
-
-        elif var == 'Min_V':
-            r = MIN_V_R
-            c = MIN_V_C
-            width = MIN_V_W
-
-        elif var == 'Capacity':
-            r = CAPACITY_R
-            c = CAPACITY_C
-            width = CAPACITY_W
 
         else:
             self.show_error(f'Uknown var {var} with value {value}')
@@ -335,12 +293,6 @@ class atu_100(object):
         #
 
         while True:
-            loopstart = time()
-
-            # Show how long we have been in current battery state
-
-            # lapsed = datetime.now() - self.state_start
-            # self.update_var('Lapsed', "%02d:%02d:%02d" % (lapsed.seconds // 3600, lapsed.seconds // 60 % 60, lapsed.seconds % 60))
 
             # Process key presses
 
@@ -375,12 +327,38 @@ class atu_100(object):
                             self.update_var(name, 'Enabled')
                         else:
                             self.update_var(name, 'Disabled')
+
                     elif name == 'Bypass':
                         self.bypass = rxmsg[name]
                         if rxmsg[name]:
                             self.update_var(name, 'Enabled')
                         else:
                             self.update_var(name, 'Disabled')
+
+                    elif name == 'Power':
+                        self.power = rxmsg[name]
+                        self.update_var(name, f'{self.power:.1f}') 
+
+                    elif name == 'SWR':
+                        self.swr = rxmsg[name]
+                        self.update_var(name, f'{self.swr:.1f}') 
+
+                    elif name == 'Reverse':
+                        self.reverse = rxmsg[name]
+                        self.update_var(name, f'{self.reverse:.1f}') 
+
+                    elif name == 'Order':
+                        self.order = rxmsg[name]
+                        self.update_var(name, f'{self.order}') 
+
+                    elif name == 'Capacitance':
+                        self.capacitance = rxmsg[name]
+                        self.update_var(name, f'{self.capacitance}') 
+
+                    elif name == 'Inductance':
+                        self.inductance = rxmsg[name]
+                        self.update_var(name, f'{self.inductance}') 
+
                     else:
                         logging.info(f'Ignored {name} = {rxmsg[name]}')
 
@@ -393,9 +371,6 @@ class atu_100(object):
             self.mwin.noutrefresh()
             curses.doupdate()
 
-            # Wait for short time to not waste CPU
-
-#            sleep(0.1)
 
         # Clean up and exit
 
