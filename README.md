@@ -8,11 +8,15 @@ It assumes there is no local display so the eeprom cell settings related to the 
 
 Serial messages are JSON format with the assumption there will be external control software.  Line endings are Linux style.
 
+**NB:** This code is a work in progress, so may not be feature complete and only have had modest or incomplete testing.
+
 ## Build instructions
 
 Build docker image from https://github.com/zsteva/mplab-pic-xc8-builder
 
 then start docker.sh and run make
+
+A copy of the created hex file will be copied to the root of the project with the build date and time added to the filename so user who just wish to use this code as is do not have to set up the build enviroment and build it.
 
 ## How to program
 
@@ -25,21 +29,17 @@ Just load it on PICkit or any other tool you use for writing the microcontroller
 
 The serial routine runs at a baud-rate of 9600 bps.
 
-TODO: Redfine this as JSON mesages.
-
-To control the tuner you just need to send a character as if you were pressing a button on the original firmware. The firmware is case insensitive and the commands are:
-
-**A** - toggles auto (automatic tuning)
-
-**B** - toggles bypass
-
-**R** - resets the tuner (makes C = 0 and L=0)
-
-**T** - forces tuning
-
-The tuner sends almost the same text that is send to the display on the original firmware whenever there's a change in status.
+Use the 3V TTL pins on the rear of PCBA:
+* RB1 - Pin 22 - TXD from ATU-100.
+* RB2 - Pin 23 - RXD to ATU-100.
 
 ## JSON messages
+
+The code is running oni a PIC16, a popular choice with hardware engineers who never had to write code.  The JSON processing conforms with the standard but it only using a limited subset of the format and is not designed to be robust.
+
+Any characters received before the opening `{` and after the closing `}` will be send to the handler used in the code this code was derived from allowing for simple human control, see the non-JSON section.
+
+### From the ATU
 
 From ATU, any field may be omitted if unchanged:
 
@@ -57,20 +57,22 @@ From ATU, any field may be omitted if unchanged:
 **System state:**
 ```
 {
+    "Auto": true,
+    "Bypass": false,
     "Efficency": 100,
     "Power": 85,
-    "SWR": 1.2,
+    "SWR": 1.23,
     "Order": "LC",
-    "Inductance": 100,
-    "Capacitance": 47
+    "Capacitance": 47,
+    "Inductance": 100
 }
 ```
 Where:
-* Efficency is a percentage, will not be reported is not calculated.
+* Efficency is a percentage, will not be reported if not calculated.
 * Power is in Watts.
 * Order will be "CL" of the capacitor is before the inductor and "LC" if after it.
-* Inductance is in uH.
 * Capacitance is in pF.
+* Inductance is in uH.
 
 
 **Settings:**
@@ -95,6 +97,44 @@ Only setting that are actually used in the code are sent.
 }
 ```
 All fields are hex and are address and data pairs
+
+### To the ATU
+
+These are the message that can control the ATU.
+
+NB:
+* Currently only postive decimal integer are handled.
+* When multiple fields are present there may be a risk of not all being process because of ample use of wait function in code that will be called at the time each feild is received.  This is because the whole received message is not buffered, only the last field received.  Sending messages with a single field is the safest option.
+* Replies are blocking so treat as half duplex and wait for any expected replies to be received before sending another message.
+
+**Change mode of operation**
+```
+{
+    "Auto": true,
+    "Bypass": false,
+}
+```
+
+**Perform action**
+```
+{
+    "Reset": true
+}
+```
+
+```
+{
+    "Tune": true
+}
+```
+
+### Non-JSON commands
+
+From the original zsteva code, sent outside the `{}` brackets:
+* A - toggles auto (automatic tuning)
+* B - toggles bypass
+* R - resets the tuner (makes C = 0 and L=0)
+* T - forces tuning
 
 ## To do
 

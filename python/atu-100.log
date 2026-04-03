@@ -1,0 +1,11 @@
+2026-04-03 17:32:02,395 INFO =======================
+2026-04-03 17:32:02,395 INFO | Starting atu-100.py |
+2026-04-03 17:32:02,487 INFO =======================
+2026-04-03 17:32:02,487 INFO Succefully to connect to ATU-100
+2026-04-03 17:32:05,094 INFO Auto -> False
+2026-04-03 17:32:08,602 INFO Auto -> True
+2026-04-03 17:32:09,054 INFO Ignored Power = 0.0
+2026-04-03 17:32:09,055 INFO Ignored SWR = 0.0
+2026-04-03 17:32:09,055 INFO Ignored Order = LC
+2026-04-03 17:32:09,055 INFO Ignored Capacitance = 0
+2026-04-03 17:32:09,056 INFO Ignored Inductance = 0

@@ -9,8 +9,10 @@
 
 
 #define BUFFER_LEN (32+5)
-static char buffer[BUFFER_LEN] = "                                    \n";
-
+static char txbuffer[BUFFER_LEN] = "                                    \n";
+static char rxbuffer[BUFFER_LEN];
+static uint8_t rxin = 0;
+static uint8_t rxout = 0;
 
 volatile bool refresh = false;
 uint8_t       txlen   = BUFFER_LEN;
@@ -30,7 +32,7 @@ void uartProcessOutput(void) {
         if (refresh) {
             if (strPosition < txlen) {
                 UART_OUT_PIN = MYZERO; // Start bit
-                buf = buffer[strPosition];
+                buf = txbuffer[strPosition];
             }
             chrPosition++;
         }
@@ -65,10 +67,10 @@ void uart_str(char *str) {
     while(refresh)
         CLRWDT();
 
-    // Copy string to buffer
+    // Copy string to txbuffer
 
     while (str[len]) {
-        buffer[len] = str[len];
+        txbuffer[len] = str[len];
         len++;
     }
 
@@ -81,7 +83,7 @@ void uart_str(char *str) {
 
 ////////////////////////////////////////
 
-char inbuf = 0;
+//char inbuf = 0;
 
 enum state_e {
     START_BIT,
@@ -113,7 +115,9 @@ void uartProcessInput(void) {
             break;
         case STOP_BIT:
             if (inbit == MYONE) {
-                inbuf = buf;
+                rxbuffer[rxin++] = buf;
+                if (rxin >= BUFFER_LEN)
+                    rxin = 0;
             }
             state = START_BIT;
             break;
@@ -121,7 +125,11 @@ void uartProcessInput(void) {
 }
 
 char uartGetChar(void) {
-    char ret = inbuf;
-    inbuf = 0;
+    if (rxout == rxin)
+        return 0;
+
+    char ret = rxbuffer[rxout++];
+    if (rxout >= BUFFER_LEN)
+        rxout = 0;
     return ret;
 }

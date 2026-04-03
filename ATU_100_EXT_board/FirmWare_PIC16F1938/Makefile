@@ -59,6 +59,7 @@ build: .build-post
 
 .build-post: .build-impl
 # Add your post 'build' code here...
+	rm ../../*.hex
 	cp ./dist/default/production/FirmWare_PIC16F1938.production.hex ../../ATU-100_remote_PIC16F1938_$(NOW).hex
 
 # clean

@@ -7,12 +7,15 @@
 #include "json.h"
 #include "main.h"
 #include <stdbool.h>
+#include <string.h>
 
 /*  a few constants */
 
 #define DEFAULT_INITIAL_OLD_VALUE  10000
 
 #define DYSP_CNT_MULT 2.3
+
+#define MAX_EVENT_STR  20
 
 // Variables
 int g_i_SWR_fixed_old = 0;
@@ -34,7 +37,9 @@ char g_b_L = 1;
 
 char g_b_Loss_mode = 0;
 
-bool new_state;
+char event_str[MAX_EVENT_STR];
+bool new_event = false;
+bool new_state = false;
 
 /*  initial eeprom values*/
 // PP5OO - Cell 31 changed from 0x10 to 0x11 because of error on transformer winding.
@@ -59,6 +64,7 @@ __eeprom unsigned char initial_eeprom[256] = {
 
 //***************** Forward declares *****************
 
+void send_event(char *event);
 void send_state(void);
 
 
@@ -172,9 +178,30 @@ void main() {
 
 //***************** Routines *****************
 
+void send_event(char *event)
+{
+    strncpy(event_str, event, MAX_EVENT_STR);
+    new_event = true;
+}
+
+
+void send_error(void)
+{
+    send_event("Error");
+}
+
+
 void send_state(void)
 {
     uint8_t sft;
+    if (json_rx_busy)
+        return;
+
+    if (new_event) {
+        new_event = false;
+        json_event(event_str);
+    }
+
     if (!new_state)
         return;
     
@@ -214,9 +241,9 @@ void button_proc_test(void) {
             else
                 g_b_L = 1;
             if (g_b_L == 1) {
-                json_event("Inductor");
+                send_event("Inductor");
             } else {
-                json_event("Capacitor");
+                send_event("Capacitor");
             }
         }
         while (Button(&PORTB, TUNE_BUTTON, 50, BUTTON_PRESSED)) {
@@ -261,8 +288,21 @@ void button_proc_test(void) {
     return;
 }
 
-void button_proc(void) {
-    char uartChar = uartGetChar();
+
+void toggle_auto_mode(void)
+{
+    CLRWDT();
+    if (g_b_Auto_mode == 0)
+        g_b_Auto_mode = 1;
+    else
+        g_b_Auto_mode = 0;
+    eeprom_write(EEPROM_AUTOMATIC_MODE, g_b_Auto_mode);
+    CLRWDT();
+    new_state = true;
+}
+
+
+void button_proc_rx(char uartChar) {
 
     // RESET
     if (uartChar == 'r') {
@@ -325,18 +365,51 @@ void button_proc(void) {
     }
 
     // AUTO
-    if (uartChar == 'a' && g_b_Bypas_mode == 0) {
-        CLRWDT();
-        if (g_b_Auto_mode == 0)
-            g_b_Auto_mode = 1;
-        else
-            g_b_Auto_mode = 0;
-        eeprom_write(EEPROM_AUTOMATIC_MODE, g_b_Auto_mode);
-        CLRWDT();
-        new_state = true;
-    }
+    if (uartChar == 'a' && g_b_Bypas_mode == 0)
+        toggle_auto_mode();
     return;
 }
+
+
+void button_proc(void) {
+    char uartChar = uartGetChar();
+
+//    if ((uartChar > 0x80) || !uartChar)
+//        return;
+
+    while (uartChar && (uartChar < 0x80)) {
+        CLRWDT();
+        switch (json_rx_process(uartChar))
+        {
+        case JRR_NOT_JSON:
+            button_proc_rx(uartChar);
+            break;
+        
+        case JRR_BOOL:
+            if (strcmp(json_rx_name, "Auto") == 0) {
+                if (g_b_Bypas_mode == 0) {
+                    if (json_rx_bool != (g_b_Auto_mode == 1))
+                        toggle_auto_mode();
+                    new_state = true;
+                } else {
+                    send_error();
+                }
+
+            } else if (strcmp(json_rx_name, "Bypass") == 0) {
+                
+            } else {
+                send_error();
+            }
+            break;
+
+        default:
+            break;
+        }
+
+    uartChar = uartGetChar();
+    }
+}
+
 
 void show_reset() {
     atu_reset();
@@ -354,7 +427,7 @@ void show_reset() {
     g_i_SWR = 0;
     g_i_PWR = 0;
     g_i_SWR_fixed_old = 0;
-    json_event("Reset");
+    send_event("Reset");
     CLRWDT();
     g_i_SWR_old = DEFAULT_INITIAL_OLD_VALUE;
     g_i_Power_old = DEFAULT_INITIAL_OLD_VALUE;
@@ -364,7 +437,7 @@ void show_reset() {
 
 void tune_btn_push() {
     CLRWDT();
-    json_event("Tune");
+    send_event("Tune");
     tune();
     if (g_b_Loss_mode == 0 | e_c_b_Loss_ind == 0)
         lcd_ind();
@@ -387,7 +460,7 @@ void lcd_prep() {
     CLRWDT();
     if (g_b_lcd_prep_short == 0) {
         uart_str("\n");
-        json_event("Startup");
+        send_event("Startup");
         json_start();
         json_str("Board", "ATU-100_EXT");
         json_str("Credit", "N7DDC");
@@ -486,7 +559,7 @@ void lcd_pwr() {
 
     CLRWDT();
     if (g_b_Overload == 1) {
-        json_event("Overload");
+        send_event("Overload");
         CLRWDT();
         g_i_SWR_old = DEFAULT_INITIAL_OLD_VALUE;
         lcd_swr(g_i_SWR_fixed);
@@ -540,7 +613,7 @@ void lcd_ind() {
 }
 
 void Test_init(void) { // g_b_Test_mode mode
-    json_event("Test mode inductor");
+    send_event("Test mode inductor");
     atu_reset();
     g_c_SW = 1; // C to OUT
     set_sw(g_c_SW);
