@@ -1,11 +1,106 @@
-2026-04-03 17:32:02,395 INFO =======================
-2026-04-03 17:32:02,395 INFO | Starting atu-100.py |
-2026-04-03 17:32:02,487 INFO =======================
-2026-04-03 17:32:02,487 INFO Succefully to connect to ATU-100
-2026-04-03 17:32:05,094 INFO Auto -> False
-2026-04-03 17:32:08,602 INFO Auto -> True
-2026-04-03 17:32:09,054 INFO Ignored Power = 0.0
-2026-04-03 17:32:09,055 INFO Ignored SWR = 0.0
-2026-04-03 17:32:09,055 INFO Ignored Order = LC
-2026-04-03 17:32:09,055 INFO Ignored Capacitance = 0
-2026-04-03 17:32:09,056 INFO Ignored Inductance = 0
+2026-04-03 22:36:51,012 INFO =======================
+2026-04-03 22:36:51,012 INFO | Starting atu-100.py |
+2026-04-03 22:36:51,012 INFO =======================
+2026-04-03 22:36:51,013 INFO Succefully to connect to ATU-100
+2026-04-03 22:36:55,523 INFO Auto -> False
+2026-04-03 22:36:56,429 INFO Ignored Power = 0.0
+2026-04-03 22:36:56,429 INFO Ignored SWR = 0.0
+2026-04-03 22:36:56,429 INFO Ignored Order = LC
+2026-04-03 22:36:56,430 INFO Ignored Capacitance = 0
+2026-04-03 22:36:56,430 INFO Ignored Inductance = 0
+2026-04-03 22:36:58,034 INFO Auto -> True
+2026-04-03 22:36:58,509 INFO Ignored Power = 0.0
+2026-04-03 22:36:58,509 INFO Ignored SWR = 0.0
+2026-04-03 22:36:58,509 INFO Ignored Order = LC
+2026-04-03 22:36:58,510 INFO Ignored Capacitance = 0
+2026-04-03 22:36:58,510 INFO Ignored Inductance = 0
+2026-04-03 22:37:03,121 INFO Bypass -> True
+2026-04-03 22:37:03,560 INFO Ignored Power = 0.0
+2026-04-03 22:37:03,560 INFO Ignored SWR = 0.0
+2026-04-03 22:37:03,560 INFO Ignored Order = LC
+2026-04-03 22:37:03,561 INFO Ignored Capacitance = 0
+2026-04-03 22:37:03,561 INFO Ignored Inductance = 0
+2026-04-03 22:37:06,777 INFO Bypass -> True
+2026-04-03 22:37:07,431 INFO Ignored Power = 0.0
+2026-04-03 22:37:07,431 INFO Ignored SWR = 0.0
+2026-04-03 22:37:07,431 INFO Ignored Order = LC
+2026-04-03 22:37:07,432 INFO Ignored Capacitance = 0
+2026-04-03 22:37:07,432 INFO Ignored Inductance = 0
+2026-04-03 22:37:10,046 INFO Bypass -> True
+2026-04-03 22:37:10,721 INFO Ignored Power = 0.0
+2026-04-03 22:37:10,721 INFO Ignored SWR = 0.0
+2026-04-03 22:37:10,722 INFO Ignored Order = LC
+2026-04-03 22:37:10,722 INFO Ignored Capacitance = 0
+2026-04-03 22:37:10,723 INFO Ignored Inductance = 0
+2026-04-03 22:37:18,849 INFO Bypass -> True
+2026-04-03 22:37:19,322 INFO Ignored Power = 0.0
+2026-04-03 22:37:19,322 INFO Ignored SWR = 0.0
+2026-04-03 22:37:19,322 INFO Ignored Order = LC
+2026-04-03 22:37:19,323 INFO Ignored Capacitance = 0
+2026-04-03 22:37:19,324 INFO Ignored Inductance = 0
+2026-04-03 22:37:21,838 INFO Bypass -> True
+2026-04-03 22:37:22,603 INFO Ignored Power = 0.0
+2026-04-03 22:37:22,603 INFO Ignored SWR = 0.0
+2026-04-03 22:37:22,603 INFO Ignored Order = LC
+2026-04-03 22:37:22,604 INFO Ignored Capacitance = 0
+2026-04-03 22:37:22,604 INFO Ignored Inductance = 0
+2026-04-03 22:38:23,432 INFO Ignored Board = ATU-100_EXT
+2026-04-03 22:38:23,432 INFO Ignored Credit = N7DDC
+2026-04-03 22:38:23,432 INFO Ignored FW = 3.2
+2026-04-03 22:38:23,433 INFO Ignored Build = ukoda
+2026-04-03 22:38:24,072 INFO Ignored Event = Startup
+2026-04-03 22:38:24,402 INFO Ignored Power = 0.0
+2026-04-03 22:38:24,402 INFO Ignored SWR = 0.0
+2026-04-03 22:38:24,402 INFO Ignored Order = LC
+2026-04-03 22:38:24,403 INFO Ignored Capacitance = 0
+2026-04-03 22:38:24,403 INFO Ignored Inductance = 0
+2026-04-03 22:38:29,715 INFO Auto -> False
+2026-04-03 22:38:30,643 INFO Ignored Power = 0.0
+2026-04-03 22:38:30,643 INFO Ignored SWR = 0.0
+2026-04-03 22:38:30,643 INFO Ignored Order = LC
+2026-04-03 22:38:30,643 INFO Ignored Capacitance = 0
+2026-04-03 22:38:30,644 INFO Ignored Inductance = 0
+2026-04-03 22:38:33,751 INFO Auto -> True
+2026-04-03 22:38:34,514 INFO Ignored Power = 0.0
+2026-04-03 22:38:34,514 INFO Ignored SWR = 0.0
+2026-04-03 22:38:34,514 INFO Ignored Order = LC
+2026-04-03 22:38:34,515 INFO Ignored Capacitance = 0
+2026-04-03 22:38:34,515 INFO Ignored Inductance = 0
+2026-04-03 22:38:40,328 INFO Bypass -> True
+2026-04-03 22:38:40,805 INFO Ignored Power = 0.0
+2026-04-03 22:38:40,805 INFO Ignored SWR = 0.0
+2026-04-03 22:38:40,805 INFO Ignored Order = LC
+2026-04-03 22:38:40,805 INFO Ignored Capacitance = 0
+2026-04-03 22:38:40,806 INFO Ignored Inductance = 0
+2026-04-03 22:38:43,311 INFO Bypass -> False
+2026-04-03 22:38:44,135 INFO Ignored Power = 0.0
+2026-04-03 22:38:44,135 INFO Ignored SWR = 0.0
+2026-04-03 22:38:44,135 INFO Ignored Order = LC
+2026-04-03 22:38:44,136 INFO Ignored Capacitance = 0
+2026-04-03 22:38:44,136 INFO Ignored Inductance = 0
+2026-04-03 22:38:45,841 INFO Bypass -> True
+2026-04-03 22:38:46,285 INFO Ignored Power = 0.0
+2026-04-03 22:38:46,286 INFO Ignored SWR = 0.0
+2026-04-03 22:38:46,286 INFO Ignored Order = LC
+2026-04-03 22:38:46,287 INFO Ignored Capacitance = 0
+2026-04-03 22:38:46,287 INFO Ignored Inductance = 0
+2026-04-03 22:38:50,197 INFO Auto -> True
+2026-04-03 22:38:50,476 INFO Ignored Event = Error
+2026-04-03 22:38:58,294 INFO Bypass -> False
+2026-04-03 22:38:59,127 INFO Ignored Power = 0.0
+2026-04-03 22:38:59,128 INFO Ignored SWR = 0.0
+2026-04-03 22:38:59,128 INFO Ignored Order = LC
+2026-04-03 22:38:59,159 INFO Ignored Capacitance = 0
+2026-04-03 22:38:59,159 INFO Ignored Inductance = 0
+2026-04-03 22:39:13,893 INFO Bypass -> True
+2026-04-03 22:39:14,310 INFO Ignored Power = 0.0
+2026-04-03 22:39:14,310 INFO Ignored SWR = 0.0
+2026-04-03 22:39:14,310 INFO Ignored Order = LC
+2026-04-03 22:39:14,342 INFO Ignored Capacitance = 0
+2026-04-03 22:39:14,343 INFO Ignored Inductance = 0
+2026-04-03 22:39:26,569 INFO Bypass -> False
+2026-04-03 22:39:27,092 INFO Ignored Power = 0.0
+2026-04-03 22:39:27,092 INFO Ignored SWR = 0.0
+2026-04-03 22:39:27,092 INFO Ignored Order = LC
+2026-04-03 22:39:27,092 INFO Ignored Capacitance = 0
+2026-04-03 22:39:27,093 INFO Ignored Inductance = 0

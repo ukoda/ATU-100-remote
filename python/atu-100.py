@@ -157,7 +157,7 @@ class atu_100(object):
 
         try:
             self.ser = serial.Serial(port = self.args.port,
-                    baudrate = 9600,
+                    baudrate = 4800,
                     bytesize=serial.EIGHTBITS,
                     stopbits = serial.STOPBITS_ONE,
                     parity = serial.PARITY_NONE,

@@ -13,6 +13,7 @@ static char txbuffer[BUFFER_LEN] = "                                    \n";
 static char rxbuffer[BUFFER_LEN];
 static uint8_t rxin = 0;
 static uint8_t rxout = 0;
+static uint8_t phase = 2;  // This is used to support the 4 times over sample on receive
 
 volatile bool refresh = false;
 uint8_t       txlen   = BUFFER_LEN;
@@ -23,6 +24,8 @@ void uart_init(void) {
 
 
 void uartProcessOutput(void) {
+    if (phase)
+        return;
     static uint8_t strPosition = 0;     // Charcter location in string
     static uint8_t chrPosition = 0;     // Bit in character
 
@@ -83,8 +86,6 @@ void uart_str(char *str) {
 
 ////////////////////////////////////////
 
-//char inbuf = 0;
-
 enum state_e {
     START_BIT,
     DATA_BIT,
@@ -98,13 +99,21 @@ void uartProcessInput(void) {
 
     bool inbit = UART_IN_PIN;
 
+    if (state == START_BIT) {
+        if (inbit == MYZERO) {
+            bitCounter = 0;
+            state = DATA_BIT;
+            phase = 5;  // This shifts use to the center of the first data bit +/- 25%
+        }
+    }
+
+    if (phase) {
+        phase--;
+        return;
+    }
+    phase = 3;    
+
     switch (state) {
-        case START_BIT:
-            if (inbit == MYZERO) {
-                bitCounter = 0;
-                state = DATA_BIT;
-            }
-            break;
         case DATA_BIT:
             buf >>= 1;
             buf |= inbit << 7;
@@ -113,6 +122,7 @@ void uartProcessInput(void) {
                 state = STOP_BIT;
             }
             break;
+
         case STOP_BIT:
             if (inbit == MYONE) {
                 rxbuffer[rxin++] = buf;
@@ -120,6 +130,9 @@ void uartProcessInput(void) {
                     rxin = 0;
             }
             state = START_BIT;
+            break;
+
+        default:
             break;
     }
 }

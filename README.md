@@ -8,6 +8,10 @@ It assumes there is no local display so the eeprom cell settings related to the 
 
 Serial messages are JSON format with the assumption there will be external control software.  Line endings are Linux style.
 
+Some external control software is present in the `python` directory.
+
+To use without building there is a suiable hex file in the project root folder.
+
 **NB:** This code is a work in progress, so may not be feature complete and only have had modest or incomplete testing.
 
 ## Build instructions
@@ -137,6 +141,8 @@ From the original zsteva code, sent outside the `{}` brackets:
 * T - forces tuning
 
 ## To do
+
+UART software is bit based under interrupts but there is currently no over sampling for framing, so receiving is unrelable.
 
 I would love to clean up all the `char` types being used as `bool` and usually testing for `== 0` as false and `== 1` as true.  However it is high risk because a lot of the compound tests are using the `&` bitwise operator instead of the `&&` boolean operator.  There is a risk if a char is set to a value other that 1 anywhere. For example:
 ```

@@ -72,6 +72,7 @@ void send_state(void);
 
 void __interrupt() isr(void) {
     if (TMR0IE && TMR0IF) {
+        // Actually 19200 sample rate, which is 4 x over samples to give actual 4800 baud
         TMR0 = 256 - (4000000 / 9600 / 2) + 7;
         TMR0IF = 0;
         uartProcessInput();
@@ -81,7 +82,8 @@ void __interrupt() isr(void) {
 
 void interrupt_init(void) {
     OPTION_REGbits.PS = 0b000; // 1:2 Prescaller
-    OPTION_REGbits.PSA = 0; // Prescaller assigned to Timer0
+//    OPTION_REGbits.PSA = 0; // Prescaller assigned to Timer0
+    OPTION_REGbits.PSA = 1; // Prescaller assigned to Timer0
     OPTION_REGbits.T0CS = 0; // Timer increments on instruction clock
     INTCONbits.T0IE = 1; // Enable interrupt on TMR0 overflow
     INTCONbits.PEIE = 1; // Enable peripheral interrupt
@@ -302,6 +304,43 @@ void toggle_auto_mode(void)
 }
 
 
+void toggle_bypass_mode(void)
+{
+    CLRWDT();
+    if (g_b_Bypas_mode == 0) {
+        g_b_Bypas_mode = 1;
+        g_c_cap_mem = g_c_cap;
+        g_c_ind_mem = g_c_ind;
+        g_c_SW_mem = g_c_SW;
+        g_c_cap = 0;
+        if (e_c_b_L_invert)
+            g_c_ind = 255;
+        else
+            g_c_ind = 0;
+        g_c_SW = 1;
+        set_ind(g_c_ind);
+        set_cap(g_c_cap);
+        set_sw(g_c_SW);
+        if (g_b_Loss_mode == 0)
+            lcd_ind();
+        g_c_Auto_mem = g_b_Auto_mode;
+        g_b_Auto_mode = 0;
+    } else {
+        g_b_Bypas_mode = 0;
+        g_c_cap = g_c_cap_mem;
+        g_c_ind = g_c_ind_mem;
+        g_c_SW = g_c_SW_mem;
+        set_cap(g_c_cap);
+        set_ind(g_c_ind);
+        set_sw(g_c_SW);
+        if (g_b_Loss_mode == 0)
+            lcd_ind();
+        g_b_Auto_mode = g_c_Auto_mem;
+    }
+    CLRWDT();
+    new_state = true;
+}
+
 void button_proc_rx(char uartChar) {
 
     // RESET
@@ -329,39 +368,7 @@ void button_proc_rx(char uartChar) {
 
     // BYPASS
     if (uartChar == 'b') {
-        CLRWDT();
-        if (g_b_Bypas_mode == 0) {
-            g_b_Bypas_mode = 1;
-            g_c_cap_mem = g_c_cap;
-            g_c_ind_mem = g_c_ind;
-            g_c_SW_mem = g_c_SW;
-            g_c_cap = 0;
-            if (e_c_b_L_invert)
-                g_c_ind = 255;
-            else
-                g_c_ind = 0;
-            g_c_SW = 1;
-            set_ind(g_c_ind);
-            set_cap(g_c_cap);
-            set_sw(g_c_SW);
-            if (g_b_Loss_mode == 0)
-                lcd_ind();
-            g_c_Auto_mem = g_b_Auto_mode;
-            g_b_Auto_mode = 0;
-        } else {
-            g_b_Bypas_mode = 0;
-            g_c_cap = g_c_cap_mem;
-            g_c_ind = g_c_ind_mem;
-            g_c_SW = g_c_SW_mem;
-            set_cap(g_c_cap);
-            set_ind(g_c_ind);
-            set_sw(g_c_SW);
-            if (g_b_Loss_mode == 0)
-                lcd_ind();
-            g_b_Auto_mode = g_c_Auto_mem;
-        }
-        CLRWDT();
-        new_state = true;
+        toggle_bypass_mode();
     }
 
     // AUTO
@@ -396,6 +403,9 @@ void button_proc(void) {
                 }
 
             } else if (strcmp(json_rx_name, "Bypass") == 0) {
+                if (json_rx_bool != (g_b_Bypas_mode == 1))
+                    toggle_bypass_mode();
+                new_state = true;
                 
             } else {
                 send_error();
