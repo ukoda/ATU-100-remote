@@ -12,15 +12,15 @@ Some external control software is present in the `python` directory.
 
 To use without building there is a suiable hex file in the project root folder.
 
-**NB:** This code is a work in progress, so may not be feature complete and only have had modest or incomplete testing.
+**NB:**
+* This code is a work in progress, so may not be feature complete and only have had modest or incomplete testing.
+* This code has only been tested on Linux as I only have Linux systems.
 
 ## Build instructions
 
-Build docker image from https://github.com/zsteva/mplab-pic-xc8-builder
+Build docker image from https://github.com/zsteva/mplab-pic-xc8-builder then start `docker.sh` and run `make`.
 
-then start docker.sh and run make
-
-A copy of the created hex file will be copied to the root of the project with the build date and time added to the filename so user who just wish to use this code as is do not have to set up the build enviroment and build it.
+A copy of the created hex file will be copied to the root of the project with the build date and time added to the filename so users who just wish to use this code as is do not have to set up the build enviroment and build it.
 
 ## How to program
 
@@ -39,7 +39,7 @@ Use the 3V TTL pins on the rear of PCBA:
 
 ## JSON messages
 
-The code is running oni a PIC16, a popular choice with hardware engineers who never had to write code.  The JSON processing conforms with the standard but it only using a limited subset of the format and is not designed to be robust.
+The code is running on a PIC16, a popular choice with hardware engineers who never had to write code.  The JSON processing conforms with the standard but it is only using a limited subset of the format and is not designed to be robust.
 
 Any characters received before the opening `{` and after the closing `}` will be send to the handler used in the code this code was derived from allowing for simple human control, see the non-JSON section.
 
@@ -47,7 +47,7 @@ Any characters received before the opening `{` and after the closing `}` will be
 
 From ATU, any field may be omitted if unchanged:
 
-**System information:**
+#### System information
 ```
 {
     "Board": "ATU-100_EXT",
@@ -58,7 +58,7 @@ From ATU, any field may be omitted if unchanged:
 ```
 
 
-**System state:**
+#### System state
 ```
 {
     "Auto": true,
@@ -79,16 +79,20 @@ Where:
 * Inductance is in uH.
 
 
-**Settings:**
+#### Settings
+
+Not implemented yet.
 ```
 {
-    "timeout: 21
+    "timeout": 21
 }
 ```
 Only setting that are actually used in the code are sent.
 
 
-**EEPROM data:**
+#### EEPROM data
+
+Not implemented yet.
 ```
 {
     "00": "78",
@@ -111,7 +115,7 @@ NB:
 * When multiple fields are present there may be a risk of not all being process because of ample use of wait function in code that will be called at the time each feild is received.  This is because the whole received message is not buffered, only the last field received.  Sending messages with a single field is the safest option.
 * Replies are blocking so treat as half duplex and wait for any expected replies to be received before sending another message.
 
-**Change mode of operation**
+#### Change mode of operation
 ```
 {
     "Auto": true,
@@ -119,19 +123,22 @@ NB:
 }
 ```
 
-**Perform action**
+#### Reset tuner to default state
 ```
 {
     "Reset": true
 }
 ```
 
+#### Request state information
 ```
 {
     "Status": true
 }
 ```
 
+#### Start tuning
+Other commands will ignored until it has completed
 ```
 {
     "Tune": true
@@ -141,11 +148,31 @@ NB:
 ### Non-JSON commands
 
 From the original zsteva code, sent outside the `{}` brackets:
-* a - toggles auto (automatic tuning)
-* b - toggles bypass
-* r - resets the tuner (makes C = 0 and L=0)
-* s - send the current status
-* t - forces tuning
+* a - Toggles auto (automatic tuning)
+* b - Toggles bypass
+* r - Resets the tuner (makes C = 0 and L=0)
+* s - Send the current status
+* t - Forces tuning
+
+## Control programs
+
+These are located in the `python` directory.
+
+### atu-100.py
+
+This is a minimal ncurses command line program that communicates directly via a serial port.
+
+![Screenshot of atu-100.py](docs/ATU-100_py.png)
+
+Keys are:
+* a - Toggles auto (automatic tuning)
+* b - Toggles bypass
+* q or `esc` - Exits the program
+* r - Resets the tuner (makes C = 0 and L=0)
+* s - Send the current status
+* t - Forces tuning
+
+You can also double click on the `Auto`, `Bypass` and `Tune` screen areas to do the same as the `a`, `b` and `t` keys respectively.
 
 ## To do
 

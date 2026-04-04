@@ -39,7 +39,7 @@ C_EMPTY_DATA = 6
 
 # Screen locations
 
-SCREEN_WIDTH  = 41
+SCREEN_WIDTH  = 48
 SCREEN_HEIGHT =  7
 
 SDATA_FIRST        = 10
@@ -74,6 +74,8 @@ IND_C       = SDATA_SECOND
 BYPASS_R    = 4
 BYPASS_C    = SDATA_SECOND
 
+TUNE_R      = 5
+TUNE_C      = SDATA_SECOND
 
 
 class atu_100(object):
@@ -173,8 +175,8 @@ class atu_100(object):
         self.mwin.nodelay(True)
 
         #  Create windows         Lines, Columns, Down, Across
-        self.swin = curses.newwin(curses.LINES - 1, curses.COLS - 1, 0, 0)
-#        self.swin = curses.newwin(SCREEN_HEIGHT, SCREEN_WIDTH, 0, 0)
+#        self.swin = curses.newwin(curses.LINES - 1, curses.COLS - 1, 0, 0)
+        self.swin = curses.newwin(SCREEN_HEIGHT, SCREEN_WIDTH, 0, 0)
 
         self.swin.border()
         self.swin.addstr(0, 2, ' ATU-100 ')
@@ -184,7 +186,7 @@ class atu_100(object):
         self.swin.addstr(2, 1, 'SWR:         -.--    Capacitance:    ----- pF')
         self.swin.addstr(3, 1, 'Reverse:    ---.- w  Inductance:     ----- nH')
         self.swin.addstr(4, 1, 'Auto:    --------    Bypass:      -------- ')
-        self.swin.addstr(5, 1, 'Event:')
+        self.swin.addstr(5, 1, 'Event:               Tune:')
 
         self.mwin.noutrefresh()
         self.swin.noutrefresh()
@@ -230,6 +232,10 @@ class atu_100(object):
         elif var == 'Bypass':
             r = BYPASS_R
             c = BYPASS_C
+
+        elif var == 'Tune':
+            r = TUNE_R
+            c = TUNE_C
 
         else:
             self.show_error(f'Uknown var {var} with value {value}')
@@ -287,10 +293,34 @@ class atu_100(object):
         return None
 
 
+    def toggle_auto(self):
+        self.update_var('Auto', '--------', C_EMPTY_DATA)
+        self.auto = not self.auto
+        logging.info(f'Auto -> {self.auto}')
+        self.sendbool('Auto', self.auto)
+
+
+    def toggle_bypass(self):
+        self.update_var('Bypass', '--------', C_EMPTY_DATA)
+        self.bypass = not self.bypass
+        logging.info(f'Bypass -> {self.bypass}')
+        self.sendbool('Bypass', self.bypass)
+
+
+    def start_tune(self):
+        logging.info('Requesting tune')
+        self.update_var('Tune', 'Started') 
+        self.sendbool('Tune', True)
+
 
     def main(self, stdscr):
         self.mwin = stdscr
         self.initlayout()
+
+        # Enable mouse events
+
+        curses.mousemask(curses.ALL_MOUSE_EVENTS)
+        print('\033[?1003h')
 
         # Get inital information from the tuner
 
@@ -306,19 +336,30 @@ class atu_100(object):
 
             key = self.mwin.getch()
             if key == ord('q') or key == 27:   # 'q' or ESC - Quit program
+                # Stop mouse events
+                print('\033[?1003l')
                 break
 
+            elif key == curses.KEY_MOUSE:
+                try:
+                    event = curses.getmouse()
+                    if event[4] == curses.BUTTON1_DOUBLE_CLICKED:
+                        if event[1] < (SDATA_FIRST + SDATA_FIRST_WIDTH):
+                            if event[2] == AUTO_R:
+                                self.toggle_auto()
+                        else:
+                            if event[2] == BYPASS_R:
+                                self.toggle_bypass()
+                            elif event[2] == TUNE_R:
+                                self.start_tune()
+                except:
+                    pass                                
+
             elif key == ord('a'):
-                self.update_var('Auto', '--------', C_EMPTY_DATA)
-                self.auto = not self.auto
-                logging.info(f'Auto -> {self.auto}')
-                self.sendbool('Auto', self.auto)
+                self.toggle_auto()
 
             elif key == ord('b'):
-                self.update_var('Bypass', '--------', C_EMPTY_DATA)
-                self.bypass = not self.bypass
-                logging.info(f'Bypass -> {self.bypass}')
-                self.sendbool('Bypass', self.bypass)
+                self.toggle_bypass()
 
             elif key == ord('r'):
                 logging.info('Requesting reset')
@@ -332,8 +373,7 @@ class atu_100(object):
                 self.sendbool('Status', True)
 
             elif key == ord('t'):
-                logging.info('Requesting tune')
-                self.sendbool('Tune', True)
+                self.start_tune()
 
             elif key != -1:                    # Not 'no key' - Show key usage
                  logging.warning(f'Unknown key: {key}')
