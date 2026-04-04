@@ -341,28 +341,41 @@ void toggle_bypass_mode(void)
     new_state = true;
 }
 
+
+void start_reset(void)
+{
+    CLRWDT();
+    show_reset();
+    g_b_Bypas_mode = 0;
+    new_state = true;
+}
+
+
+void start_tune(void)
+{
+    CLRWDT();
+    p_Tx = 1; //
+    n_Tx = 0; // TX request
+    Delay_ms(250); //
+    tune_btn_push();
+    g_b_Bypas_mode = 0;
+    g_b_Soft_tune = 0;
+    new_state = true;
+}
+
+
 void button_proc_rx(char uartChar) {
 
     // RESET
     if (uartChar == 'r') {
         Delay_ms(250);
-        CLRWDT();
-        show_reset();
-        g_b_Bypas_mode = 0;
-        new_state = true;
+        start_reset();
     }
 
     // TUNE
     if (uartChar == 't' || g_b_Soft_tune) {
         Delay_ms(250);
-        CLRWDT();
-        p_Tx = 1; //
-        n_Tx = 0; // TX request
-        Delay_ms(250); //
-        tune_btn_push();
-        g_b_Bypas_mode = 0;
-        g_b_Soft_tune = 0;
-        new_state = true;
+        start_tune();
     }
 
 
@@ -405,6 +418,17 @@ void button_proc(void) {
             } else if (strcmp(json_rx_name, "Bypass") == 0) {
                 if (json_rx_bool != (g_b_Bypas_mode == 1))
                     toggle_bypass_mode();
+                new_state = true;
+                
+            } else if (strcmp(json_rx_name, "Reset") == 0) {
+                start_reset();
+                
+            } else if (strcmp(json_rx_name, "Status") == 0) {
+                CLRWDT();
+                new_state = true;
+                
+            } else if (strcmp(json_rx_name, "Tune") == 0) {
+                start_tune();
                 new_state = true;
                 
             } else {

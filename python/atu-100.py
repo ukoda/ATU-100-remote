@@ -59,6 +59,9 @@ REVERSE_C   = SDATA_FIRST
 AUTO_R      = 4
 AUTO_C      = SDATA_FIRST
 
+EVENT_R     = 5
+EVENT_C     = SDATA_FIRST
+
 ORDER_R     = 1
 ORDER_C     = SDATA_SECOND
 
@@ -70,7 +73,6 @@ IND_C       = SDATA_SECOND
 
 BYPASS_R    = 4
 BYPASS_C    = SDATA_SECOND
-
 
 
 
@@ -182,6 +184,7 @@ class atu_100(object):
         self.swin.addstr(2, 1, 'SWR:         -.--    Capacitance:    ----- pF')
         self.swin.addstr(3, 1, 'Reverse:    ---.- w  Inductance:     ----- nH')
         self.swin.addstr(4, 1, 'Auto:    --------    Bypass:      -------- ')
+        self.swin.addstr(5, 1, 'Event:')
 
         self.mwin.noutrefresh()
         self.swin.noutrefresh()
@@ -207,6 +210,10 @@ class atu_100(object):
         elif var == 'Auto':
             r = AUTO_R
             c = AUTO_C
+
+        elif var == 'Event':
+            r = EVENT_R
+            c = EVENT_C
 
         elif var == 'Order':
             r = ORDER_R
@@ -287,6 +294,7 @@ class atu_100(object):
 
         # Get inital information from the tuner
 
+        self.sendbool('Status', True)
 
         #
         # Loop processing key presses, send polls and update battery voltage etc
@@ -311,6 +319,21 @@ class atu_100(object):
                 self.bypass = not self.bypass
                 logging.info(f'Bypass -> {self.bypass}')
                 self.sendbool('Bypass', self.bypass)
+
+            elif key == ord('r'):
+                logging.info('Requesting reset')
+                self.sendbool('Reset', True)
+
+            elif key == ord('s'):
+                logging.info('Requesting status')
+                self.update_var('Auto', '--------', C_EMPTY_DATA)
+                self.update_var('Bypass', '--------', C_EMPTY_DATA)
+                self.update_var('Event', ' ') 
+                self.sendbool('Status', True)
+
+            elif key == ord('t'):
+                logging.info('Requesting tune')
+                self.sendbool('Tune', True)
 
             elif key != -1:                    # Not 'no key' - Show key usage
                  logging.warning(f'Unknown key: {key}')
@@ -346,6 +369,9 @@ class atu_100(object):
                     elif name == 'Reverse':
                         self.reverse = rxmsg[name]
                         self.update_var(name, f'{self.reverse:.1f}') 
+
+                    elif name == 'Event':
+                        self.update_var(name, rxmsg[name]) 
 
                     elif name == 'Order':
                         self.order = rxmsg[name]

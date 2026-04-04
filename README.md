@@ -31,7 +31,7 @@ Just load it on PICkit or any other tool you use for writing the microcontroller
 
 ## How to interface
 
-The serial routine runs at a baud-rate of 9600 bps.
+The serial routine runs at a baud-rate of 4800 bps.  The timer limits the reliable data receive rate to this speed.
 
 Use the 3V TTL pins on the rear of PCBA:
 * RB1 - Pin 22 - TXD from ATU-100.
@@ -128,6 +128,12 @@ NB:
 
 ```
 {
+    "Status": true
+}
+```
+
+```
+{
     "Tune": true
 }
 ```
@@ -135,14 +141,13 @@ NB:
 ### Non-JSON commands
 
 From the original zsteva code, sent outside the `{}` brackets:
-* A - toggles auto (automatic tuning)
-* B - toggles bypass
-* R - resets the tuner (makes C = 0 and L=0)
-* T - forces tuning
+* a - toggles auto (automatic tuning)
+* b - toggles bypass
+* r - resets the tuner (makes C = 0 and L=0)
+* s - send the current status
+* t - forces tuning
 
 ## To do
-
-UART software is bit based under interrupts but there is currently no over sampling for framing, so receiving is unrelable.
 
 I would love to clean up all the `char` types being used as `bool` and usually testing for `== 0` as false and `== 1` as true.  However it is high risk because a lot of the compound tests are using the `&` bitwise operator instead of the `&&` boolean operator.  There is a risk if a char is set to a value other that 1 anywhere. For example:
 ```
