@@ -157,12 +157,62 @@ From the original zsteva code, sent outside the `{}` brackets:
 ## Control programs
 
 These are located in the `python` directory.
+* `atu100.py` - Simple command line interface and also core code imported by other programs.
+* `atu100remote.py` - Minimal ncurses program to show status and normal control.
+* `atu100diagnostics.py` - Ncurses program used for set up and testing.
 
-### atu-100.py
+### atu100.py
 
-This is a minimal ncurses command line program that communicates directly via a serial port.
+This is a simple command line interface program:
+```
+david@shigoto:~/Dev/transceiver/tuners/ATU-100-remote/python$ ./atu100.py -h
+usage: atu-100 [-h] [-p PORT] [-c COMMAND] [--logfile LOGFILE] [--log-level {debug,info,warn,error,critical}]
+               [--newlog]
 
-![Screenshot of atu-100.py](docs/ATU-100_py.png)
+Control program for ATU-100 tuner
+
+options:
+  -h, --help            show this help message and exit
+
+General:
+  General options
+
+  -p PORT, --port PORT  Serial port for ATU-100
+  -c COMMAND, --command COMMAND
+                        Command, as listed below
+  --logfile LOGFILE     Log filename (atu100.log)
+  --log-level {debug,info,warn,error,critical}
+                        Log level: debug|info(default)|warn|error|critical
+  --newlog              Create a new log file
+
+Commands can be:
+ 'a' - Disable auto tunning
+ 'A' - Enable auto tunning
+ 'b' - Disable bypass
+ 'B' - Enable bypass
+ 'r' - Reset tuner, C and L
+ 't' - Force tuning
+If no command supplied will show current status
+```
+
+```
+david@shigoto:~/Dev/transceiver/tuners/ATU-100-remote/python$ ./atu100.py -p /dev/ttyACM1 -c A
+Enabling auto tuner mode
+
+Auto:        Enabled
+Bypass:      Disabled
+Power:       0.0
+SWR:         0.0
+Order:       LC
+Capacitance: 0 pF
+Inductance:  0 nH
+```
+
+### atu100remote.py
+
+This is a minimal remote control ncurses command line program that communicates directly via a serial port.
+
+![Screenshot of atu100.py](docs/atu100remote.png)
 
 Keys are:
 * a - Toggles auto (automatic tuning)
@@ -173,6 +223,12 @@ Keys are:
 * t - Forces tuning
 
 You can also double click on the `Auto`, `Bypass` and `Tune` screen areas to do the same as the `a`, `b` and `t` keys respectively.
+
+### atu100diagnotics.py
+
+This is a diagnostics and setup ncurses command line program that communicates directly via a serial port.
+
+Currently a work in progress.
 
 ## To do
 

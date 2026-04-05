@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 '''
-ATU-100 control program
+ATU-100 diagnostic program
+
+This program is intended for diagnostics and setup of a remote ATU-100.
 
 The AUT-100 needs to be programmed with the hex file from
 https://github.com/ukoda/ATU-100-remote and the 3V TTL serial lines to wire to
@@ -18,6 +20,7 @@ import json
 import logging
 import serial.tools.list_ports
 import sys
+import atu100
 
 from curses import wrapper
 from datetime import datetime
@@ -78,21 +81,23 @@ TUNE_R      = 5
 TUNE_C      = SDATA_SECOND
 
 
-class atu_100(object):
+class atu100diag(object):
     def __init__(self):
-        # JSON messages
-        self.ser         = None
-        self.json_active = False
-        self.json_buffer = ''
-        # Tuner state
-        self.auto        = True
-        self.bypass      = False
-        self.power       = 0.0
-        self.swr         = 0.0
-        self.reverse     = 0.0
-        self.order       = 'LC'
-        self.capacitance = 0
-        self.inductance  = 0
+        self.atu = atu100.atu100()
+
+        # # JSON messages
+        # self.ser         = None
+        # self.json_active = False
+        # self.json_buffer = ''
+        # # Tuner state
+        # self.auto        = True
+        # self.bypass      = False
+        # self.power       = 0.0
+        # self.swr         = 0.0
+        # self.reverse     = 0.0
+        # self.order       = 'LC'
+        # self.capacitance = 0
+        # self.inductance  = 0
 
         # Get the command line args
 
@@ -103,14 +108,14 @@ class atu_100(object):
                       " 'r'        - Reset tuner, C and L\n"
                       " 't'        - Force tuning\n"
         )
-        parser = argparse.ArgumentParser(prog='atu-100',
-                                         description='Control program for ATU-100 tuner',
+        parser = argparse.ArgumentParser(prog='atu-100 diagnostics',
+                                         description='Diagnostics program for ATU-100 tuner',
                                          epilog=epilog_str,
                                          formatter_class=argparse.RawTextHelpFormatter)
 
         parse_general = parser.add_argument_group('General', 'General options')
         parse_general.add_argument('-p', '--port', default='/dev/ttyACM0', help = 'Serial port for ATU-100')
-        parse_general.add_argument('--logfile', default='atu-100.log', help = 'Log filename (atu-100.log)')
+        parse_general.add_argument('--logfile', default='atu100.log', help = 'Log filename (atu100.log)')
         parse_general.add_argument('--log-level', type=str,
                                     dest='log_level', default='info',
                                     choices=['debug', 'info', 'warn', 'error', 'critical'],
@@ -127,24 +132,17 @@ class atu_100(object):
         else:
             filemode = 'a'
         logging.basicConfig(level=logging.getLevelName(self.args.log_level.upper()), format=FORMAT, filename=self.args.logfile, filemode=filemode)
-        logging.info('=======================')
-        logging.info('| Starting atu-100.py |')
-        logging.info('=======================')
+        logging.info('=================================')
+        logging.info('| Starting atu100diagnostics.py |')
+        logging.info('=================================')
 
         # Open the serial port
 
         try:
-            self.ser = serial.Serial(port = self.args.port,
-                    baudrate = 4800,
-                    bytesize=serial.EIGHTBITS,
-                    stopbits = serial.STOPBITS_ONE,
-                    parity = serial.PARITY_NONE,
-                    timeout=0.1) # default timeout for reading in seconds
+            self.atu.connect(self.args.port)
         # exit if the port is not opened
         except serial.SerialException as e:
             sys.exit(e)
-
-        logging.info('Succefully to connect to ATU-100')
 
         # Load the JSON files
 
@@ -175,11 +173,11 @@ class atu_100(object):
         self.mwin.nodelay(True)
 
         #  Create windows         Lines, Columns, Down, Across
-#        self.swin = curses.newwin(curses.LINES - 1, curses.COLS - 1, 0, 0)
-        self.swin = curses.newwin(SCREEN_HEIGHT, SCREEN_WIDTH, 0, 0)
+        self.swin = curses.newwin(curses.LINES - 1, curses.COLS - 1, 0, 0)
+#        self.swin = curses.newwin(SCREEN_HEIGHT, SCREEN_WIDTH, 0, 0)
 
         self.swin.border()
-        self.swin.addstr(0, 2, ' ATU-100 ')
+        self.swin.addstr(0, 2, ' ATU-100 Diagnostics ')
 
         # Render the static status text
         self.swin.addstr(1, 1, 'Power:      ---.- W  Order:             --')
@@ -250,67 +248,19 @@ class atu_100(object):
             pass
         self.swin.noutrefresh()
 
-
-    def sendbool(self, name, value):
-        if value:
-            msg = f'{{"{name}": true}}\n'
-        else:
-            msg = f'{{"{name}": false}}\n'
-        self.ser.write(msg.encode('ascii'))
-
-
-    def getmsg(self):
-        result = None
-        rxd = self.ser.read()
-        if not rxd:
-            return None
-
-        if self.json_active:
-            while (rxd):
-                ch = rxd.decode("utf-8")
-                logging.debug(f'Got {ch}')
-                self.json_buffer += ch
-                if ch == '}':
-                    logging.debug('JSON ended')
-                    self.json_active = False
-                    try:
-                        result = json.loads( self.json_buffer)
-                    except:
-                        logging.warning(f'Invalid JSON reveived: [{self.json_buffer}]')
-                    return result
-                rxd = self.ser.read()
-        else:
-            while (rxd):
-                ch = rxd.decode("utf-8")
-                logging.debug(f'Wait {ch}')
-                if ch == '{':
-                    logging.debug('JSON started')
-                    self.json_active = True
-                    self.json_buffer = ch
-                    return None
-                rxd = self.ser.read()
-
-        return None
-
-
     def toggle_auto(self):
         self.update_var('Auto', '--------', C_EMPTY_DATA)
-        self.auto = not self.auto
-        logging.info(f'Auto -> {self.auto}')
-        self.sendbool('Auto', self.auto)
+        self.atu.toggle_auto()
 
 
     def toggle_bypass(self):
         self.update_var('Bypass', '--------', C_EMPTY_DATA)
-        self.bypass = not self.bypass
-        logging.info(f'Bypass -> {self.bypass}')
-        self.sendbool('Bypass', self.bypass)
+        self.atu.toggle_bypass()
 
 
     def start_tune(self):
-        logging.info('Requesting tune')
         self.update_var('Tune', 'Started') 
-        self.sendbool('Tune', True)
+        self.atu.start_tune()
 
 
     def main(self, stdscr):
@@ -324,7 +274,7 @@ class atu_100(object):
 
         # Get inital information from the tuner
 
-        self.sendbool('Status', True)
+        self.atu.sendbool('Status', True)
 
         #
         # Loop processing key presses, send polls and update battery voltage etc
@@ -363,14 +313,14 @@ class atu_100(object):
 
             elif key == ord('r'):
                 logging.info('Requesting reset')
-                self.sendbool('Reset', True)
+                self.atu.sendbool('Reset', True)
 
             elif key == ord('s'):
                 logging.info('Requesting status')
                 self.update_var('Auto', '--------', C_EMPTY_DATA)
                 self.update_var('Bypass', '--------', C_EMPTY_DATA)
                 self.update_var('Event', ' ') 
-                self.sendbool('Status', True)
+                self.atu.sendbool('Status', True)
 
             elif key == ord('t'):
                 self.start_tune()
@@ -380,50 +330,50 @@ class atu_100(object):
 
             # Check for a new JSON message
 
-            rxmsg = self.getmsg()
+            rxmsg = self.atu.getmsg()
             if rxmsg:
                 logging.debug(rxmsg)
                 for name in rxmsg:
                     if name == 'Auto':
-                        self.auto = rxmsg[name]
+                        self.atu.auto = rxmsg[name]
                         if rxmsg[name]:
                             self.update_var(name, 'Enabled')
                         else:
                             self.update_var(name, 'Disabled')
 
                     elif name == 'Bypass':
-                        self.bypass = rxmsg[name]
+                        self.atu.bypass = rxmsg[name]
                         if rxmsg[name]:
                             self.update_var(name, 'Enabled')
                         else:
                             self.update_var(name, 'Disabled')
 
                     elif name == 'Power':
-                        self.power = rxmsg[name]
-                        self.update_var(name, f'{self.power:.1f}') 
+                        self.atu.power = rxmsg[name]
+                        self.update_var(name, f'{self.atu.power:.1f}') 
 
                     elif name == 'SWR':
-                        self.swr = rxmsg[name]
-                        self.update_var(name, f'{self.swr:.1f}') 
+                        self.atu.swr = rxmsg[name]
+                        self.update_var(name, f'{self.atu.swr:.1f}') 
 
                     elif name == 'Reverse':
-                        self.reverse = rxmsg[name]
-                        self.update_var(name, f'{self.reverse:.1f}') 
+                        self.atu.reverse = rxmsg[name]
+                        self.update_var(name, f'{self.atu.reverse:.1f}') 
 
                     elif name == 'Event':
                         self.update_var(name, rxmsg[name]) 
 
                     elif name == 'Order':
-                        self.order = rxmsg[name]
-                        self.update_var(name, f'{self.order}') 
+                        self.atu.order = rxmsg[name]
+                        self.update_var(name, f'{self.atu.order}') 
 
                     elif name == 'Capacitance':
-                        self.capacitance = rxmsg[name]
-                        self.update_var(name, f'{self.capacitance}') 
+                        self.atu.capacitance = rxmsg[name]
+                        self.update_var(name, f'{self.atu.capacitance}') 
 
                     elif name == 'Inductance':
-                        self.inductance = rxmsg[name]
-                        self.update_var(name, f'{self.inductance}') 
+                        self.atu.inductance = rxmsg[name]
+                        self.update_var(name, f'{self.atu.inductance}') 
 
                     else:
                         logging.info(f'Ignored {name} = {rxmsg[name]}')
@@ -446,6 +396,6 @@ class atu_100(object):
 
 
 if __name__ == "__main__":
-    atu = atu_100()
+    atu = atu100diag()
     wrapper(atu.main)
     exit(0)
