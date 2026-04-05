@@ -391,11 +391,44 @@ void button_proc_rx(char uartChar) {
 }
 
 
+char nibbletochar(uint8_t nibble)
+{
+    nibble &= 0xf;
+    if (nibble < 10)
+        return nibble + '0';
+    else
+        return nibble - 10 + 'a';
+}
+
+
+void bytetostr(uint8_t byte, char *str)
+{
+    str[0] = nibbletochar(byte >> 4);
+    str[1] = nibbletochar(byte);
+    str[2] = 0;
+}
+
+
+void dump_eeprom()
+{
+    uint16_t address;
+    char addstr[3];
+    char datastr[3];
+
+    CLRWDT();
+    json_start();
+    for (address = 0; address <= 0xff; address++) {
+        bytetostr((uint8_t)address, addstr);
+        bytetostr(eeprom_read((uint8_t)address), datastr);
+        CLRWDT();
+        json_str(addstr, datastr);
+    }
+    json_end();
+}
+
+
 void button_proc(void) {
     char uartChar = uartGetChar();
-
-//    if ((uartChar > 0x80) || !uartChar)
-//        return;
 
     while (uartChar && (uartChar < 0x80)) {
         CLRWDT();
@@ -430,7 +463,19 @@ void button_proc(void) {
             } else if (strcmp(json_rx_name, "Tune") == 0) {
                 start_tune();
                 new_state = true;
-                
+
+            } else {
+                send_error();
+            }
+            break;
+
+        case JRR_INT:
+            send_error();
+            break;
+
+        case JRR_STR:
+            if (strcmp(json_rx_name, "Dump") == 0) {
+                dump_eeprom();
             } else {
                 send_error();
             }

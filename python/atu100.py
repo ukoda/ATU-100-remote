@@ -79,6 +79,11 @@ class atu100(object):
         self.ser.write(msg.encode('ascii'))
 
 
+    def sendstr(self, name, value):
+        msg = f'{{"{name}": "{value}"}}\n'
+        self.ser.write(msg.encode('ascii'))
+
+
     def getmsg(self):
         result = None
         rxd = self.ser.read()
@@ -138,6 +143,7 @@ class atu100(object):
                       " 'A' - Enable auto tunning\n"
                       " 'b' - Disable bypass\n"
                       " 'B' - Enable bypass\n"
+                      " 'd' - Dump EEPROM contents\n"
                       " 'r' - Reset tuner, C and L\n"
                       " 't' - Force tuning\n"
                       "If no command supplied will show current status\n"
@@ -150,6 +156,7 @@ class atu100(object):
         parse_general = parser.add_argument_group('General', 'General options')
         parse_general.add_argument('-p', '--port', default='/dev/ttyACM0', help = 'Serial port for ATU-100')
         parse_general.add_argument('-c', '--command', default='', help = 'Command, as listed below')
+        parse_general.add_argument('-s', '--savefile', default='', help = 'Optional file to save EEPROM data to')
         parse_general.add_argument('--logfile', default='atu100.log', help = 'Log filename (atu100.log)')
         parse_general.add_argument('--log-level', type=str,
                                     dest='log_level', default='info',
@@ -173,7 +180,7 @@ class atu100(object):
 
         self.connect(self.args.port)
 
-        # Get inital information from the tuner
+        # Get information from the tuner
 
         if self.args.command == 'a':
             print('Disabling auto tuner mode')
@@ -190,6 +197,10 @@ class atu100(object):
         elif self.args.command == 'B':
             print('Enabling bypass')
             self.sendbool('Bypass', True)
+
+        elif self.args.command == 'd':
+            print('Dumping EEPROM, this will take about 10 seconds')
+            self.sendstr('Dump', 'EEPROM')
 
         elif self.args.command == 'r':
             print('Reseting settings')
@@ -217,55 +228,64 @@ class atu100(object):
             if rxmsg:
                 logging.debug(rxmsg)
                 print()
-                result = False
-                for name in rxmsg:
-                    if name == 'Auto':
-                        self.auto = rxmsg[name]
-                        if rxmsg[name]:
-                            print('Auto:        Enabled')
-                        else:
-                            print('Auto:        Disabled')
-
-                    elif name == 'Bypass':
-                        self.bypass = rxmsg[name]
-                        if rxmsg[name]:
-                            print('Bypass:      Enabled')
-                        else:
-                            print('Bypass:      Disabled')
-
-                    elif name == 'Power':
-                        self.power = rxmsg[name]
-                        print(f'Power:       {self.power:.1f}') 
-                        result = True
-
-                    elif name == 'SWR':
-                        self.swr = rxmsg[name]
-                        print(f'SWR:         {self.swr:.1f}') 
-
-                    elif name == 'Reverse':
-                        self.reverse = rxmsg[name]
-                        print(f'Reverse:     {self.reverse:.1f}') 
-
-                    elif name == 'Event':
-                        print(f'{name+":":12} {rxmsg[name]}')
-
-                    elif name == 'Order':
-                        self.order = rxmsg[name]
-                        print(f'{name+":":12} {rxmsg[name]}') 
-
-                    elif name == 'Capacitance':
-                        self.capacitance = rxmsg[name]
-                        print(f'Capacitance: {self.capacitance} pF') 
-
-                    elif name == 'Inductance':
-                        self.inductance = rxmsg[name]
-                        print(f'Inductance:  {self.inductance} nH') 
-
-                    else:
-                        print(f'{name+":":12}: {rxmsg[name]}') 
-                
-                if result:
+                if self.args.command == 'd':
+                    print(json.dumps(rxmsg, indent=4))
+                    if self.args.savefile != '':
+                        with open(self.args.savefile, 'w') as jsonfile:
+                            jsonfile.write(json.dumps(rxmsg, indent=4))
+                        print(f'Saved to {self.args.savefile}')
                     break
+                
+                else:
+                    result = False
+                    for name in rxmsg:
+                        if name == 'Auto':
+                            self.auto = rxmsg[name]
+                            if rxmsg[name]:
+                                print('Auto:        Enabled')
+                            else:
+                                print('Auto:        Disabled')
+
+                        elif name == 'Bypass':
+                            self.bypass = rxmsg[name]
+                            if rxmsg[name]:
+                                print('Bypass:      Enabled')
+                            else:
+                                print('Bypass:      Disabled')
+
+                        elif name == 'Power':
+                            self.power = rxmsg[name]
+                            print(f'Power:       {self.power:.1f}') 
+                            result = True
+
+                        elif name == 'SWR':
+                            self.swr = rxmsg[name]
+                            print(f'SWR:         {self.swr:.1f}') 
+
+                        elif name == 'Reverse':
+                            self.reverse = rxmsg[name]
+                            print(f'Reverse:     {self.reverse:.1f}') 
+
+                        elif name == 'Event':
+                            print(f'{name+":":12} {rxmsg[name]}')
+
+                        elif name == 'Order':
+                            self.order = rxmsg[name]
+                            print(f'{name+":":12} {rxmsg[name]}') 
+
+                        elif name == 'Capacitance':
+                            self.capacitance = rxmsg[name]
+                            print(f'Capacitance: {self.capacitance} pF') 
+
+                        elif name == 'Inductance':
+                            self.inductance = rxmsg[name]
+                            print(f'Inductance:  {self.inductance} nH') 
+
+                        else:
+                            print(f'{name+":":12}: {rxmsg[name]}') 
+                    
+                    if result:
+                        break
 
         # Clean up and exit
 

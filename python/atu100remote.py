@@ -133,9 +133,9 @@ class atu100remote(object):
         else:
             filemode = 'a'
         logging.basicConfig(level=logging.getLevelName(self.args.log_level.upper()), format=FORMAT, filename=self.args.logfile, filemode=filemode)
-        logging.info('=================================')
+        logging.info('============================')
         logging.info('| Starting atu100remote.py |')
-        logging.info('=================================')
+        logging.info('============================')
 
         # Open the serial port
 

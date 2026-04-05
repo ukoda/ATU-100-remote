@@ -145,6 +145,14 @@ Other commands will ignored until it has completed
 }
 ```
 
+#### Dump EEPROM contents
+Dump the full EEPROM contents
+```
+{
+    "Dump": "EEPROM"
+}
+```
+
 ### Non-JSON commands
 
 From the original zsteva code, sent outside the `{}` brackets:
@@ -160,6 +168,8 @@ These are located in the `python` directory.
 * `atu100.py` - Simple command line interface and also core code imported by other programs.
 * `atu100remote.py` - Minimal ncurses program to show status and normal control.
 * `atu100diagnostics.py` - Ncurses program used for set up and testing.
+
+**NB:** The ncurses programs should be exited using the 'q' or escape key, where supported, not using cntl-c, as the mouse event reporting will fill the terminal with rubbish related to the mouse movent.  Normal exit stops this activity.
 
 ### atu100.py
 
