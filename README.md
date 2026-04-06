@@ -92,7 +92,6 @@ Only setting that are actually used in the code are sent.
 
 #### EEPROM data
 
-Not implemented yet.
 ```
 {
     "00": "78",

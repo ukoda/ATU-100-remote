@@ -27,6 +27,45 @@ from time import sleep, time
 
 
 
+class cell:
+    EEPROM_DISPLAY_I2C_ADDR         = 0x00
+    EEPROM_DISPLAY_TYPE             = 0x01
+    EEPROM_AUTOMATIC_MODE           = 0x02
+    EEPROM_TIMEOUT_TIME             = 0x03
+    EEPROM_SWR_THRESHOLD            = 0x04
+    EEPROM_MIN_POWER                = 0x05
+    EEPROM_MAX_POWER                = 0x06
+    EEPROM_DISPLAY_OFFSET_DOWN      = 0x07
+    EEPROM_DISPLAY_OFFSET_LEFT      = 0x08
+    EEPROM_MAX_INIT_SWR             = 0x09
+    EEPROM_NUMBER_INDS              = 0x0a
+    EEPROM_IND_LINEAR_PITCH         = 0x0b
+    EEPROM_NUMBER_CAPS              = 0x0c
+    EEPROM_CAP_LINEAR_PITCH         = 0x0d
+    EEPROM_ENABLE_NONLINEAR_DIODE   = 0x0e
+    EEPROM_INVERSE_INDUCTANCE_RELAY = 0x0f
+
+    EEPROM_INDUCTOR_FIRST           = 0x10
+    EEPROM_INDUCTOR_LAST            = 0x1D
+    
+    EEPROM_CAPACITOR_FIRST          = 0x20
+    EEPROM_CAPACITOR_LAST           = 0x2D
+
+    EEPROM_POWER_MEASURE_LEVEL      = 0x30
+    EEPROM_TANDEM_MATCH             = 0x31
+    EEPROM_DISPLAY_OFF_TIMER        = 0x32
+    EEPROM_ADDITIONAL_INDICATION    = 0x33
+    EEPROM_FEEDER_LOSS              = 0x34
+    EEPROM_DISABLE_RELAYS           = 0x35
+
+    EEPROM_LAST_SWR_L               = 0xfb
+    EEPROM_LAST_SWR_H               = 0xfc
+    EEPROM_LAST_SW                  = 0xfd
+    EEPROM_LAST_IND                 = 0xfe
+    EEPROM_LAST_CAP                 = 0xff
+
+
+
 class atu100(object):
     def __init__(self):
         # JSON messages
@@ -42,6 +81,10 @@ class atu100(object):
         self.order       = 'LC'
         self.capacitance = 0
         self.inductance  = 0
+        # Tuner settings
+        self.eeprom      = []
+        for address in range(0x100):
+            self.eeprom.append(0xff)
 
     def connect(self, port):
         # Open the serial port

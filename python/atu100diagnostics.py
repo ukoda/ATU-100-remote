@@ -22,6 +22,7 @@ import serial.tools.list_ports
 import sys
 import atu100
 
+from atu100 import cell
 from curses import wrapper
 from datetime import datetime
 from enum import Enum
@@ -341,24 +342,168 @@ class atu100diag(object):
         self.process_state = ProcessState.PS_GOT_STATUS
 
 
-    def process_eeprom_msg(self, rxmsg):
-        logging.info('Processing eeprom data message')
-        for name in rxmsg:
-            address = int(name, 16)
+    def show_eeprom(self):
+        for address in range(0x100):
+            value = self.atu.eeprom[address]
             row = 3 + int(address // 16)
             col = 5 + (address % 16) * 3
-            if address <0x02:
+            if address <= cell.EEPROM_DISPLAY_TYPE:
                 attr = C_WARN_DATA
-            elif (address >= 0x02) and (address <= 0x34):
+            elif address <= cell.EEPROM_MAX_POWER:
                 attr = C_GOOD_DATA
-            elif rxmsg[name] == 'ff':
+            elif address < cell.EEPROM_MAX_INIT_SWR:
+                attr = C_WARN_DATA
+            elif address <= cell.EEPROM_INDUCTOR_LAST:
+                attr = C_GOOD_DATA
+            elif address < cell.EEPROM_CAPACITOR_FIRST:
+                attr = C_EMPTY_DATA
+            elif address <= cell.EEPROM_CAPACITOR_LAST:
+                attr = C_GOOD_DATA
+            elif address < cell.EEPROM_POWER_MEASURE_LEVEL:
+                attr = C_EMPTY_DATA
+            elif address <= cell.EEPROM_DISABLE_RELAYS:
+                attr = C_GOOD_DATA
+            elif address >= cell.EEPROM_LAST_SWR_L:
+                attr = C_GOOD_DATA
+            elif value == 0xff:
                 attr = C_EMPTY_DATA
             else:
                 attr = C_BAD_DATA
-            self.ewin.addnstr(row, col, rxmsg[name], 2, curses.color_pair(attr))
+            self.ewin.addnstr(row, col, f'{value:02x}', 2, curses.color_pair(attr))
         self.ewin.noutrefresh()
         self.mwin.noutrefresh()
         curses.doupdate()
+
+
+    def get_bcd(self, bcd):
+        tens = bcd // 16
+        units = bcd & 0xf
+        return tens * 10 + units
+
+
+    def show_settings(self):
+        address = cell.EEPROM_TIMEOUT_TIME
+        value = self.atu.eeprom[address]
+        bcd = self.get_bcd(value)
+        logging.info(f'{address:02x}[{value:02x}]: Timeout {bcd} mS')
+
+        address = cell.EEPROM_SWR_THRESHOLD
+        value = self.atu.eeprom[address]
+        dec = value // 16
+        frac = value & 0xf
+        logging.info(f'{address:02x}[{value:02x}]: Auto SWR threshold {dec}.{frac}')
+
+        address = cell.EEPROM_MIN_POWER
+        value = self.atu.eeprom[address]
+        bcd = self.get_bcd(value)
+        if self.atu.eeprom[cell.EEPROM_POWER_MEASURE_LEVEL] == 1:
+            bcd *= 10
+        logging.info(f'{address:02x}[{value:02x}]: Minimum power {bcd} W')
+
+        address = cell.EEPROM_MAX_POWER
+        value = self.atu.eeprom[address]
+        if value == 0:
+            logging.info(f'{address:02x}[{value:02x}]: No maximum power')
+        else:
+            bcd = self.get_bcd(value)
+            if self.atu.eeprom[cell.EEPROM_POWER_MEASURE_LEVEL] == 1:
+                bcd *= 10
+            logging.info(f'{address:02x}[{value:02x}]: Maximum power {bcd} W')
+
+        address = cell.EEPROM_MAX_INIT_SWR
+        value = self.atu.eeprom[address]
+        if value == 0:
+            logging.info(f'{address:02x}[{value:02x}]: No maximum initial SWR')
+        else:
+            dec = value // 16
+            frac = value & 0xf
+            logging.info(f'{address:02x}[{value:02x}]: Maximum initial SWR {dec}.{frac}')
+
+        address = cell.EEPROM_NUMBER_INDS
+        value = self.atu.eeprom[address]
+        if (value < 5) or (value > 7):
+            num_inductors = 0
+            logging.info(f'{address:02x}[{value:02x}]: Number of inductors invalid')
+        else:
+            num_inductors = value
+            logging.info(f'{address:02x}[{value:02x}]: Number of inductors {value}')
+
+        address = cell.EEPROM_IND_LINEAR_PITCH
+        value = self.atu.eeprom[address]
+        if value == 0:
+            logging.info(f'{address:02x}[{value:02x}]: Inductors not linear pitch')
+        elif value == 1:
+            num_inductors = 0
+            logging.info(f'{address:02x}[{value:02x}]: Inductors linear pitch')
+        else:
+            num_inductors = 0
+            logging.info(f'{address:02x}[{value:02x}]: Inductors pitch invalid')
+
+        address = cell.EEPROM_NUMBER_CAPS
+        value = self.atu.eeprom[address]
+        if (value < 5) or (value > 7):
+            num_capacitors = 0
+            logging.info(f'{address:02x}[{value:02x}]: Number of capacitors invalid')
+        else:
+            num_capacitors = value
+            logging.info(f'{address:02x}[{value:02x}]: Number of capacitors {value}')
+
+        address = cell.EEPROM_CAP_LINEAR_PITCH
+        value = self.atu.eeprom[address]
+        if value == 0:
+            logging.info(f'{address:02x}[{value:02x}]: Capacitors not linear pitch')
+        elif value == 1:
+            num_capacitors = 0
+            logging.info(f'{address:02x}[{value:02x}]: Capacitors linear pitch')
+        else:
+            num_capacitors = 0
+            logging.info(f'{address:02x}[{value:02x}]: Capacitors pitch invalid')
+
+        address = cell.EEPROM_ENABLE_NONLINEAR_DIODE
+        value = self.atu.eeprom[address]
+        if value == 0:
+            logging.info(f'{address:02x}[{value:02x}]: No linearity correction')
+        elif value == 1:
+            logging.info(f'{address:02x}[{value:02x}]: Linearity correction')
+        else:
+            logging.info(f'{address:02x}[{value:02x}]: Invalid linearity correction')
+
+        address = cell.EEPROM_INVERSE_INDUCTANCE_RELAY
+        value = self.atu.eeprom[address]
+        if value == 0:
+            logging.info(f'{address:02x}[{value:02x}]: Normal inductor relays')
+        elif value == 1:
+            logging.info(f'{address:02x}[{value:02x}]: Inverse inductor relays')
+        else:
+            logging.info(f'{address:02x}[{value:02x}]: Invalid inductor relays')
+
+        if num_inductors > 0:
+            valstr = ''
+            for relay in range(num_inductors):
+                if relay != 0:
+                    valstr += ', '
+                value = self.get_bcd(self.atu.eeprom[cell.EEPROM_INDUCTOR_FIRST + relay * 2]) * 100
+                value += self.get_bcd(self.atu.eeprom[cell.EEPROM_INDUCTOR_FIRST + relay * 2 + 1])
+                valstr += f'{value} nH'
+            logging.info(f'Inductors:  {valstr}')
+
+        if num_capacitors > 0:
+            valstr = ''
+            for relay in range(num_capacitors):
+                if relay != 0:
+                    valstr += ', '
+                value = self.get_bcd(self.atu.eeprom[cell.EEPROM_CAPACITOR_FIRST + relay * 2]) * 100
+                value += self.get_bcd(self.atu.eeprom[cell.EEPROM_CAPACITOR_FIRST + relay * 2 + 1])
+                valstr += f'{value} pF'
+            logging.info(f'Capacitors: {valstr}')
+
+
+    def process_eeprom_msg(self, rxmsg):
+        for name in rxmsg:
+            address = int(name, 16)
+            self.atu.eeprom[address] = int(rxmsg[name], 16)
+        self.show_eeprom()
+        self.show_settings()
         self.process_state = ProcessState.PS_GOT_EEPROM
 
 
@@ -440,7 +585,7 @@ class atu100diag(object):
                     self.process_status_msg(rxmsg)
 
                 elif '00' in rxmsg:
-                    logging.info('Received EEPROM dump message')
+                    logging.info('Received eeprom dump message')
                     self.process_eeprom_msg(rxmsg)
                 
                 elif 'Event' in rxmsg:
