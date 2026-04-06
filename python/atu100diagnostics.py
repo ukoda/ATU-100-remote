@@ -28,6 +28,16 @@ from enum import Enum
 from time import sleep, time
 
 
+# Process state
+
+class ProcessState:
+    PS_IDLE        = 0
+    PS_NEED_STATUS = 1
+    PS_WAIT_STATUS = 2
+    PS_GOT_STATUS  = 3
+    PS_NEED_EEPROM = 4
+    PS_WAIT_EEPROM = 5
+    PS_GOT_EEPROM  = 6
 
 # ncurses related
 
@@ -42,8 +52,12 @@ C_EMPTY_DATA = 6
 
 # Screen locations
 
-SCREEN_WIDTH  = 48
-SCREEN_HEIGHT =  7
+# Status window
+
+STAT_WIN_WIDTH  = 48
+STAT_WIN_HEIGHT =  7
+STAT_WIN_DOWN   =  0
+STAT_WIN_ACROSS =  0
 
 SDATA_FIRST        = 10
 SDATA_FIRST_WIDTH  =  8
@@ -80,24 +94,19 @@ BYPASS_C    = SDATA_SECOND
 TUNE_R      = 5
 TUNE_C      = SDATA_SECOND
 
+# EEPROM window
+
+EEPROM_WIN_WIDTH  = 53
+EEPROM_WIN_HEIGHT = 20
+EEPROM_WIN_DOWN   =  0
+EEPROM_WIN_ACROSS =  STAT_WIN_WIDTH
+
+
 
 class atu100diag(object):
     def __init__(self):
         self.atu = atu100.atu100()
-
-        # # JSON messages
-        # self.ser         = None
-        # self.json_active = False
-        # self.json_buffer = ''
-        # # Tuner state
-        # self.auto        = True
-        # self.bypass      = False
-        # self.power       = 0.0
-        # self.swr         = 0.0
-        # self.reverse     = 0.0
-        # self.order       = 'LC'
-        # self.capacitance = 0
-        # self.inductance  = 0
+        self.process_state = ProcessState.PS_IDLE
 
         # Get the command line args
 
@@ -172,12 +181,16 @@ class atu100diag(object):
         self.mwin.clear()
         self.mwin.nodelay(True)
 
-        #  Create windows         Lines, Columns, Down, Across
-        self.swin = curses.newwin(curses.LINES - 1, curses.COLS - 1, 0, 0)
-#        self.swin = curses.newwin(SCREEN_HEIGHT, SCREEN_WIDTH, 0, 0)
+        # Create windows
+
+        # Status window
+
+        #          Lines, Columns, Down, Across
+#        self.swin = curses.newwin(curses.LINES - 1, curses.COLS - 1, 0, 0)
+        self.swin = curses.newwin(STAT_WIN_HEIGHT, STAT_WIN_WIDTH, STAT_WIN_DOWN, STAT_WIN_ACROSS)
 
         self.swin.border()
-        self.swin.addstr(0, 2, ' ATU-100 Diagnostics ')
+        self.swin.addstr(0, 2, ' ATU-100 Status ')
 
         # Render the static status text
         self.swin.addstr(1, 1, 'Power:      ---.- W  Order:             --')
@@ -186,8 +199,22 @@ class atu100diag(object):
         self.swin.addstr(4, 1, 'Auto:    --------    Bypass:      -------- ')
         self.swin.addstr(5, 1, 'Event:               Tune:')
 
+        # EEPROM window
+
+        self.ewin = curses.newwin(EEPROM_WIN_HEIGHT, EEPROM_WIN_WIDTH, EEPROM_WIN_DOWN, EEPROM_WIN_ACROSS)
+        self.ewin.border()
+        self.ewin.addstr(0, 2, ' EEPROM data ')
+        # Render the static status text
+        self.ewin.addstr(1, 1, 'Add -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -a -b -c -d -e -f')
+        self.ewin.addstr(2, 1, '---------------------------------------------------')
+        for line in range(16):
+           self.ewin.addstr(3 + line, 1, f'{line:x}-  -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --')
+
+        # Final screen set up
+
         self.mwin.noutrefresh()
         self.swin.noutrefresh()
+        self.ewin.noutrefresh()
         curses.doupdate()
 
 
@@ -263,6 +290,78 @@ class atu100diag(object):
         self.atu.start_tune()
 
 
+    def process_status_msg(self, rxmsg):
+        for name in rxmsg:
+            if name == 'Auto':
+                self.atu.auto = rxmsg[name]
+                if rxmsg[name]:
+                    self.update_var(name, 'Enabled')
+                else:
+                    self.update_var(name, 'Disabled')
+
+            elif name == 'Bypass':
+                self.atu.bypass = rxmsg[name]
+                if rxmsg[name]:
+                    self.update_var(name, 'Enabled')
+                else:
+                    self.update_var(name, 'Disabled')
+
+            elif name == 'Power':
+                self.atu.power = rxmsg[name]
+                self.update_var(name, f'{self.atu.power:.1f}') 
+
+            elif name == 'SWR':
+                self.atu.swr = rxmsg[name]
+                self.update_var(name, f'{self.atu.swr:.1f}') 
+
+            elif name == 'Reverse':
+                self.atu.reverse = rxmsg[name]
+                self.update_var(name, f'{self.atu.reverse:.1f}') 
+
+            elif name == 'Event':
+                self.update_var(name, rxmsg[name]) 
+
+            elif name == 'Order':
+                self.atu.order = rxmsg[name]
+                self.update_var(name, f'{self.atu.order}') 
+
+            elif name == 'Capacitance':
+                self.atu.capacitance = rxmsg[name]
+                self.update_var(name, f'{self.atu.capacitance}') 
+
+            elif name == 'Inductance':
+                self.atu.inductance = rxmsg[name]
+                self.update_var(name, f'{self.atu.inductance}') 
+
+            else:
+                logging.info(f'Ignored {name} = {rxmsg[name]}')
+
+        self.mwin.noutrefresh()
+        curses.doupdate()
+        self.process_state = ProcessState.PS_GOT_STATUS
+
+
+    def process_eeprom_msg(self, rxmsg):
+        logging.info('Processing eeprom data message')
+        for name in rxmsg:
+            address = int(name, 16)
+            row = 3 + int(address // 16)
+            col = 5 + (address % 16) * 3
+            if address <0x02:
+                attr = C_WARN_DATA
+            elif (address >= 0x02) and (address <= 0x34):
+                attr = C_GOOD_DATA
+            elif rxmsg[name] == 'ff':
+                attr = C_EMPTY_DATA
+            else:
+                attr = C_BAD_DATA
+            self.ewin.addnstr(row, col, rxmsg[name], 2, curses.color_pair(attr))
+        self.ewin.noutrefresh()
+        self.mwin.noutrefresh()
+        curses.doupdate()
+        self.process_state = ProcessState.PS_GOT_EEPROM
+
+
     def main(self, stdscr):
         self.mwin = stdscr
         self.initlayout()
@@ -274,7 +373,7 @@ class atu100diag(object):
 
         # Get inital information from the tuner
 
-        self.atu.sendbool('Status', True)
+        self.process_state = ProcessState.PS_NEED_STATUS
 
         #
         # Loop processing key presses, send polls and update battery voltage etc
@@ -333,60 +432,48 @@ class atu100diag(object):
             rxmsg = self.atu.getmsg()
             if rxmsg:
                 logging.debug(rxmsg)
-                for name in rxmsg:
-                    if name == 'Auto':
-                        self.atu.auto = rxmsg[name]
-                        if rxmsg[name]:
-                            self.update_var(name, 'Enabled')
-                        else:
-                            self.update_var(name, 'Disabled')
+                if 'Board' in rxmsg:
+                    logging.info('Received info message')
 
-                    elif name == 'Bypass':
-                        self.atu.bypass = rxmsg[name]
-                        if rxmsg[name]:
-                            self.update_var(name, 'Enabled')
-                        else:
-                            self.update_var(name, 'Disabled')
+                elif 'Power' in rxmsg:
+                    logging.info('Received status message')
+                    self.process_status_msg(rxmsg)
 
-                    elif name == 'Power':
-                        self.atu.power = rxmsg[name]
-                        self.update_var(name, f'{self.atu.power:.1f}') 
+                elif '00' in rxmsg:
+                    logging.info('Received EEPROM dump message')
+                    self.process_eeprom_msg(rxmsg)
+                
+                elif 'Event' in rxmsg:
+                    logging.info(f'Received event message: {rxmsg["Event"]}')
 
-                    elif name == 'SWR':
-                        self.atu.swr = rxmsg[name]
-                        self.update_var(name, f'{self.atu.swr:.1f}') 
+                else:
+                    logging.warning(f'Received unknown message: {rxmsg}')
 
-                    elif name == 'Reverse':
-                        self.atu.reverse = rxmsg[name]
-                        self.update_var(name, f'{self.atu.reverse:.1f}') 
+            # Process state
 
-                    elif name == 'Event':
-                        self.update_var(name, rxmsg[name]) 
+            match self.process_state:
+                case ProcessState.PS_IDLE:
+                    pass
 
-                    elif name == 'Order':
-                        self.atu.order = rxmsg[name]
-                        self.update_var(name, f'{self.atu.order}') 
+                case ProcessState.PS_NEED_STATUS:
+                    self.atu.sendbool('Status', True)
+                    self.process_state = ProcessState.PS_WAIT_STATUS
 
-                    elif name == 'Capacitance':
-                        self.atu.capacitance = rxmsg[name]
-                        self.update_var(name, f'{self.atu.capacitance}') 
+                case ProcessState.PS_WAIT_STATUS:
+                    pass
 
-                    elif name == 'Inductance':
-                        self.atu.inductance = rxmsg[name]
-                        self.update_var(name, f'{self.atu.inductance}') 
+                case ProcessState.PS_GOT_STATUS:
+                    self.process_state = ProcessState.PS_NEED_EEPROM
 
-                    else:
-                        logging.info(f'Ignored {name} = {rxmsg[name]}')
+                case ProcessState.PS_NEED_EEPROM:
+                    self.atu.sendstr('Dump', 'EEPROM')
+                    self.process_state = ProcessState.PS_WAIT_EEPROM
 
-            # Update information on screen
+                case ProcessState.PS_WAIT_EEPROM:
+                    pass
 
-            # self.update_var('Level', f'{self.bat_percent:.1f}') 
-            # self.update_var('Voltage', f'{self.bat_volts:.3f}')
-            # self.update_var('Current', f'{self.bat_current:.4f}', attr=current_colour) 
-
-            self.mwin.noutrefresh()
-            curses.doupdate()
-
+                case ProcessState.PS_GOT_EEPROM:
+                    self.process_state = ProcessState.PS_IDLE
 
         # Clean up and exit
 

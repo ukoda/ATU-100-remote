@@ -240,6 +240,15 @@ This is a diagnostics and setup ncurses command line program that communicates d
 
 Currently a work in progress.
 
+![Screenshot of atu100diagnostics.py](docs/atu100diagnostics.png)
+
+
+EEPROM data colour coding:
+* Magenta: Valid data that is ignored.
+* Green: Valid data that is used as a setting, double click on it to see it's details.
+* Grey: Unused data.
+* White on red: Data that should not be used but is not blank and is not documented.  AKA WFT? data.
+
 ## To do
 
 I would love to clean up all the `char` types being used as `bool` and usually testing for `== 0` as false and `== 1` as true.  However it is high risk because a lot of the compound tests are using the `&` bitwise operator instead of the `&&` boolean operator.  There is a risk if a char is set to a value other that 1 anywhere. For example:
