@@ -68,7 +68,7 @@ From ATU, any field may be omitted if unchanged:
     "SWR": 1.23,
     "Order": "LC",
     "Capacitance": 47,
-    "Inductance": 100
+    "Inductance": 110
 }
 ```
 Where:
@@ -76,7 +76,7 @@ Where:
 * Power is in Watts.
 * Order will be "CL" of the capacitor is before the inductor and "LC" if after it.
 * Capacitance is in pF.
-* Inductance is in uH.
+* Inductance is in nH.
 
 
 #### Settings

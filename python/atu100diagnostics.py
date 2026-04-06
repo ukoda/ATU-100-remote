@@ -361,6 +361,10 @@ class atu100diag(object):
                 attr = C_GOOD_DATA
             elif address < cell.EEPROM_POWER_MEASURE_LEVEL:
                 attr = C_EMPTY_DATA
+            elif address <= cell.EEPROM_TANDEM_MATCH:
+                attr = C_GOOD_DATA
+            elif address < cell.EEPROM_ADDITIONAL_INDICATION:
+                attr = C_WARN_DATA
             elif address <= cell.EEPROM_DISABLE_RELAYS:
                 attr = C_GOOD_DATA
             elif address >= cell.EEPROM_LAST_SWR_L:
@@ -496,6 +500,60 @@ class atu100diag(object):
                 value += self.get_bcd(self.atu.eeprom[cell.EEPROM_CAPACITOR_FIRST + relay * 2 + 1])
                 valstr += f'{value} pF'
             logging.info(f'Capacitors: {valstr}')
+
+        address = cell.EEPROM_POWER_MEASURE_LEVEL
+        value = self.atu.eeprom[address]
+        if value == 0:
+            logging.info(f'{address:02x}[{value:02x}]: Measure to 999 W')
+        elif value == 1:
+            logging.info(f'{address:02x}[{value:02x}]: Measure to 9999 W')
+        else:
+            logging.info(f'{address:02x}[{value:02x}]: Invalid measurement range')
+
+        address = cell.EEPROM_TANDEM_MATCH
+        value = self.atu.eeprom[address]
+        bcd = self.get_bcd(value)
+        logging.info(f'{address:02x}[{value:02x}]: Tandum match ratio 1:{bcd}')
+
+        address = cell.EEPROM_ADDITIONAL_INDICATION
+        value = self.atu.eeprom[address]
+        if value == 0:
+            logging.info(f'{address:02x}[{value:02x}]: LC indication only')
+        elif value == 1:
+            logging.info(f'{address:02x}[{value:02x}]: Efficeny indication')
+        else:
+            logging.info(f'{address:02x}[{value:02x}]: Invalid indication setting')
+
+        address = cell.EEPROM_FEEDER_LOSS
+        value = self.atu.eeprom[address]
+        if value == 0:
+            logging.info(f'{address:02x}[{value:02x}]: Feeder loss ignored')
+        else:
+            dec = value // 16
+            frac = value & 0xf
+            logging.info(f'{address:02x}[{value:02x}]: Feeder power loss ratio 1:{dec}.{frac}')
+
+        address = cell.EEPROM_DISABLE_RELAYS
+        value = self.atu.eeprom[address]
+        logging.info(f'{address:02x}[{value:02x}]: Disable relays {value}')
+
+        address = cell.EEPROM_LAST_SWR_L
+        valuelow = self.atu.eeprom[address]
+        valuehi = self.atu.eeprom[address+1]
+        logging.info(f'{address:02x}-{address+1:02x}[{valuelow:02x}:{valuehi:02x}]: Last SWR {valuehi}:{valuelow}')
+
+        address = cell.EEPROM_LAST_SW
+        value = self.atu.eeprom[address]
+        logging.info(f'{address:02x}[{value:02x}]: Last SW {value}')
+
+        address = cell.EEPROM_LAST_IND
+        value = self.atu.eeprom[address]
+        logging.info(f'{address:02x}[{value:02x}]: Last inductor  {value}')
+
+        address = cell.EEPROM_LAST_CAP
+        value = self.atu.eeprom[address]
+        logging.info(f'{address:02x}[{value:02x}]: Last capacitor {value}')
+
 
 
     def process_eeprom_msg(self, rxmsg):
