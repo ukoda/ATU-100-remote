@@ -19,6 +19,7 @@ import datetime
 import json
 import logging
 import serial.tools.list_ports
+import string
 import sys
 import atu100
 
@@ -48,8 +49,9 @@ C_GOOD_DATA  = 1
 C_BAD_DATA   = 2
 C_WARN_DATA  = 3
 C_NOTE_DATA  = 4
-C_COMPLETE   = 5
+C_EDIT_DATA  = 5
 C_EMPTY_DATA = 6
+
 
 # Screen locations
 
@@ -117,6 +119,9 @@ class atu100diag(object):
     def __init__(self):
         self.atu = atu100.atu100()
         self.process_state = ProcessState.PS_IDLE
+        self.edit_mode = False
+        self.edit_address = 3
+        self.edit_value = 0xff
 
         # Get the command line args
 
@@ -186,7 +191,7 @@ class atu100diag(object):
         curses.init_pair(C_BAD_DATA,   curses.COLOR_WHITE,   curses.COLOR_RED)
         curses.init_pair(C_WARN_DATA,  curses.COLOR_MAGENTA, curses.COLOR_BLACK)
         curses.init_pair(C_NOTE_DATA,  curses.COLOR_BLUE,    curses.COLOR_BLACK)
-        curses.init_pair(C_COMPLETE,   curses.COLOR_WHITE,   curses.COLOR_GREEN)
+        curses.init_pair(C_EDIT_DATA,  curses.COLOR_WHITE,   curses.COLOR_BLUE)
         curses.init_pair(C_EMPTY_DATA, curses.COLOR_WHITE,   curses.COLOR_BLACK)
         self.mwin.clear()
         self.mwin.nodelay(True)
@@ -196,7 +201,6 @@ class atu100diag(object):
         # Status window
 
         #          Lines, Columns, Down, Across
-#        self.swin = curses.newwin(curses.LINES - 1, curses.COLS - 1, 0, 0)
         self.swin = curses.newwin(STAT_WIN_HEIGHT, STAT_WIN_WIDTH, STAT_WIN_DOWN, STAT_WIN_ACROSS)
 
         self.swin.border()
@@ -233,7 +237,6 @@ class atu100diag(object):
         self.ewin.noutrefresh()
         self.cwin.noutrefresh()
         curses.doupdate()
-
 
 
     def update_var(self, var, value, attr = C_GOOD_DATA):
@@ -291,6 +294,7 @@ class atu100diag(object):
         except:
             pass
         self.swin.noutrefresh()
+
 
     def toggle_auto(self):
         self.update_var('Auto', '--------', C_EMPTY_DATA)
@@ -364,7 +368,9 @@ class atu100diag(object):
             value = self.atu.eeprom[address]
             row = 3 + int(address // 16)
             col = 5 + (address % 16) * 3
-            if address <= cell.EEPROM_DISPLAY_TYPE:
+            if self.edit_mode and (address == self.edit_address):
+                attr = C_EDIT_DATA
+            elif address <= cell.EEPROM_DISPLAY_TYPE:
                 attr = C_WARN_DATA
             elif address <= cell.EEPROM_MAX_POWER:
                 attr = C_GOOD_DATA
@@ -402,13 +408,14 @@ class atu100diag(object):
         return tens * 10 + units
 
 
-    def show_configuration(self):
+    def show_configuration(self, log):
         row = 3
         address = cell.EEPROM_TIMEOUT_TIME
         value = self.atu.eeprom[address]
         bcd = self.get_bcd(value)
         valstr = f'Timeout {bcd} mS'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         self.cwin.addstr(row, CONFIG_FIRST, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(C_GOOD_DATA))
 
@@ -417,7 +424,8 @@ class atu100diag(object):
         dec = value // 16
         frac = value & 0xf
         valstr = f'Auto SWR thres {dec}.{frac}'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         self.cwin.addstr(row, CONFIG_SECOND, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_SECONDD, valstr, curses.color_pair(C_GOOD_DATA))
 
@@ -427,7 +435,8 @@ class atu100diag(object):
         if self.atu.eeprom[cell.EEPROM_POWER_MEASURE_LEVEL] == 1:
             bcd *= 10
         valstr = f'Minimum power {bcd} W'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         row += 1
         self.cwin.addstr(row, CONFIG_FIRST, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(C_GOOD_DATA))
@@ -441,7 +450,8 @@ class atu100diag(object):
             if self.atu.eeprom[cell.EEPROM_POWER_MEASURE_LEVEL] == 1:
                 bcd *= 10
             valstr = f'Max power {bcd} W'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         self.cwin.addstr(row, CONFIG_SECOND, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_SECONDD, valstr, curses.color_pair(C_GOOD_DATA))
 
@@ -453,7 +463,8 @@ class atu100diag(object):
             dec = value // 16
             frac = value & 0xf
             valstr = f'Max init SWR {dec}.{frac}'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         row += 1
         self.cwin.addstr(row, CONFIG_FIRST, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(C_GOOD_DATA))
@@ -462,45 +473,55 @@ class atu100diag(object):
         value = self.atu.eeprom[address]
         if (value < 5) or (value > 7):
             num_inductors = 0
-            logging.warning(f'{address:02x}: Number of inductors invalid')
+            if log:
+                logging.warning(f'{address:02x}: Number of inductors invalid')
         else:
             num_inductors = value
-            logging.info(f'{address:02x}: Number of inductors {value}')
+            if log:
+                logging.info(f'{address:02x}: Number of inductors {value}')
 
         address = cell.EEPROM_IND_LINEAR_PITCH
         value = self.atu.eeprom[address]
         linear_inds = False
         if value == 0:
-            logging.info(f'{address:02x}: Inductors not linear pitch')
+            if log:
+                logging.info(f'{address:02x}: Inductors not linear pitch')
         elif value == 1:
             linear_inds = True
             num_inductors = 0
-            logging.info(f'{address:02x}: Inductors linear pitch')
+            if log:
+                logging.info(f'{address:02x}: Inductors linear pitch')
         else:
             num_inductors = 0
-            logging.warning(f'{address:02x}: Inductors pitch invalid')
+            if log:
+                logging.warning(f'{address:02x}: Inductors pitch invalid')
 
         address = cell.EEPROM_NUMBER_CAPS
         value = self.atu.eeprom[address]
         if (value < 5) or (value > 7):
             num_capacitors = 0
-            logging.warning(f'{address:02x}: Number of capacitors invalid')
+            if log:
+                logging.warning(f'{address:02x}: Number of capacitors invalid')
         else:
             num_capacitors = value
-            logging.info(f'{address:02x}: Number of capacitors {value}')
+            if log:
+                logging.info(f'{address:02x}: Number of capacitors {value}')
 
         address = cell.EEPROM_CAP_LINEAR_PITCH
         value = self.atu.eeprom[address]
         linear_caps = False
         if value == 0:
-            logging.info(f'{address:02x}: Capacitors not linear pitch')
+            if log:
+                logging.info(f'{address:02x}: Capacitors not linear pitch')
         elif value == 1:
             linear_caps = True
             num_capacitors = 0
-            logging.info(f'{address:02x}: Capacitors linear pitch')
+            if log:
+                logging.info(f'{address:02x}: Capacitors linear pitch')
         else:
             num_capacitors = 0
-            logging.warning(f'{address:02x}: Capacitors pitch invalid')
+            if log:
+                logging.warning(f'{address:02x}: Capacitors pitch invalid')
 
         address = cell.EEPROM_ENABLE_NONLINEAR_DIODE
         value = self.atu.eeprom[address]
@@ -512,7 +533,8 @@ class atu100diag(object):
         else:
             attr =C_BAD_DATA
             valstr = 'Invalid linear cor'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         self.cwin.addstr(row, CONFIG_SECOND, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_SECONDD, valstr, curses.color_pair(attr))
 
@@ -526,7 +548,8 @@ class atu100diag(object):
         else:
             attr =C_BAD_DATA
             valstr = 'Invalid ind relays'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         row += 1
         self.cwin.addstr(row, CONFIG_FIRST, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(attr))
@@ -539,7 +562,8 @@ class atu100diag(object):
                 value = self.get_bcd(self.atu.eeprom[cell.EEPROM_INDUCTOR_FIRST + relay * 2]) * 100
                 value += self.get_bcd(self.atu.eeprom[cell.EEPROM_INDUCTOR_FIRST + relay * 2 + 1])
                 valstr += f'{value:>4}'
-            logging.info(valstr)
+            if log:
+                logging.info(valstr)
             self.cwin.addstr(1, 1, 'Inds (nH): ')
             self.cwin.addstr(1, 12, valstr, curses.color_pair(C_GOOD_DATA))
         elif linear_inds:
@@ -555,7 +579,8 @@ class atu100diag(object):
                 value = self.get_bcd(self.atu.eeprom[cell.EEPROM_CAPACITOR_FIRST + relay * 2]) * 100
                 value += self.get_bcd(self.atu.eeprom[cell.EEPROM_CAPACITOR_FIRST + relay * 2 + 1])
                 valstr += f'{value:>4}'
-            logging.info(valstr)
+            if log:
+                logging.info(valstr)
             self.cwin.addstr(2, 1, 'Caps (pf): ')
             self.cwin.addstr(2, 12, valstr, curses.color_pair(C_GOOD_DATA))
         elif linear_caps:
@@ -573,7 +598,8 @@ class atu100diag(object):
         else:
             attr =C_BAD_DATA
             valstr = 'Invalid range'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         self.cwin.addstr(row, CONFIG_SECOND, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_SECONDD, valstr, curses.color_pair(attr))
 
@@ -581,7 +607,8 @@ class atu100diag(object):
         value = self.atu.eeprom[address]
         bcd = self.get_bcd(value)
         valstr = f'Tandum match 1:{bcd}'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         row += 1
         self.cwin.addstr(row, CONFIG_FIRST, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(C_GOOD_DATA))
@@ -596,7 +623,8 @@ class atu100diag(object):
         else:
             attr =C_BAD_DATA
             valstr = 'Invalid indication'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         self.cwin.addstr(row, CONFIG_SECOND, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_SECONDD, valstr, curses.color_pair(attr))
 
@@ -608,7 +636,8 @@ class atu100diag(object):
             dec = value // 16
             frac = value & 0xf
             valstr = f'Feed loss 1:{dec}.{frac}'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         row += 1
         self.cwin.addstr(row, CONFIG_FIRST, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(C_GOOD_DATA))
@@ -616,7 +645,8 @@ class atu100diag(object):
         address = cell.EEPROM_DISABLE_RELAYS
         value = self.atu.eeprom[address]
         valstr = f'Disable relays {value}'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         self.cwin.addstr(row, CONFIG_SECOND, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_SECONDD, valstr, curses.color_pair(C_GOOD_DATA))
 
@@ -625,7 +655,8 @@ class atu100diag(object):
         valuelow = self.atu.eeprom[address]
         valuehi = self.atu.eeprom[address+1]
         valstr = f'Last SWR {valuehi}:{valuelow}'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         row += 2
         self.cwin.addstr(row, CONFIG_FIRST, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(C_GOOD_DATA))
@@ -633,14 +664,16 @@ class atu100diag(object):
         address = cell.EEPROM_LAST_SW
         value = self.atu.eeprom[address]
         valstr = f'Last SW {value}'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         self.cwin.addstr(row, CONFIG_SECOND, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_SECONDD, valstr, curses.color_pair(C_GOOD_DATA))
 
         address = cell.EEPROM_LAST_IND
         value = self.atu.eeprom[address]
         valstr = f'Last inductor {value}'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         row += 1
         self.cwin.addstr(row, CONFIG_FIRST, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(C_GOOD_DATA))
@@ -648,7 +681,8 @@ class atu100diag(object):
         address = cell.EEPROM_LAST_CAP
         value = self.atu.eeprom[address]
         valstr = f'Last capacitor {value}'
-        logging.info(valstr)
+        if log:
+            logging.info(valstr)
         self.cwin.addstr(row, CONFIG_SECOND, f'{address:02x}:')
         self.cwin.addstr(row, CONFIG_SECONDD, valstr, curses.color_pair(C_GOOD_DATA))
 
@@ -657,14 +691,137 @@ class atu100diag(object):
         curses.doupdate()
 
 
-
     def process_eeprom_msg(self, rxmsg):
         for name in rxmsg:
             address = int(name, 16)
             self.atu.eeprom[address] = int(rxmsg[name], 16)
         self.show_eeprom()
-        self.show_configuration()
+        self.show_configuration(True)
         self.process_state = ProcessState.PS_GOT_EEPROM
+
+
+    def process_normal_key(self, key):
+        if key == ord('a'):
+            self.toggle_auto()
+
+        elif key == ord('b'):
+            self.toggle_bypass()
+
+        elif key == ord('r'):
+            logging.info('Requesting reset')
+            self.atu.sendbool('Reset', True)
+
+        elif key == ord('s'):
+            logging.info('Requesting status')
+            self.update_var('Auto', '--------', C_EMPTY_DATA)
+            self.update_var('Bypass', '--------', C_EMPTY_DATA)
+            self.update_var('Event', ' ') 
+            self.atu.sendbool('Status', True)
+            self.process_state = ProcessState.PS_WAIT_STATUS
+
+        elif key == ord('t'):
+            self.start_tune()
+
+        elif key == ord('e'):
+            self.edit_mode = True
+            self.edit_value = self.atu.eeprom[self.edit_address]
+            self.show_eeprom()
+
+        elif key != -1:                    # Not 'no key' - Show key usage
+            logging.warning(f'Unknown normal key: {key}')
+
+
+    def update_cell(self):
+        if self.edit_value != self.atu.eeprom[self.edit_address]:
+            logging.info(f'Cell {self.edit_address:02x}: {self.edit_value:02x} -> {self.atu.eeprom[self.edit_address]:02x}')
+            self.atu.seteepromdata(self.edit_address, self.atu.eeprom[self.edit_address])
+        else:
+            logging.info(f'Cell {self.edit_address:02x}: unchanged as {self.edit_value:02x}')
+
+
+    def process_edit_key(self, key):
+        current_address = self.edit_address
+
+        if key == 10:
+            self.update_cell()
+            self.edit_mode = False
+
+        elif key == 260:    # Left arrow
+            self.update_cell()
+            self.edit_address -= 1
+            if self.edit_address < 0:
+                self.edit_address = 255
+
+        elif key == 261:    # Right arrow
+            self.update_cell()
+            self.edit_address += 1
+            if self.edit_address > 255:
+                self.edit_address = 0
+
+        elif key == 259:    # Up arrow
+            self.update_cell()
+            self.edit_address -= 16
+            if self.edit_address < 0:
+                self.edit_address += 256
+
+        elif key == 258:    # Down arrow
+            self.update_cell()
+            self.edit_address += 16
+            if self.edit_address > 255:
+                self.edit_address -= 256
+
+        elif key == 262:    # Home
+            self.update_cell()
+            self.edit_address &= 0xf0
+
+        elif key == 360:    # End
+            self.update_cell()
+            self.edit_address &= 0xf0
+            self.edit_address += 0x0f
+
+        elif key == 339:    # Page up
+            self.update_cell()
+            self.edit_address &= 0x0f
+
+        elif key == 338:    # Page down
+            self.update_cell()
+            self.edit_address &= 0x0f
+            self.edit_address += 0xf0
+
+        elif (key >= ord('0')) and (key <= ord('9')):
+            nibble = key - ord('0')
+            cell = self.atu.eeprom[self.edit_address]
+            cell = (cell << 4) & 0xf0   # Move low nibble to high nibble
+            cell += nibble
+            self.atu.eeprom[self.edit_address] = cell
+
+        elif (key >= ord('a')) and (key <= ord('f')):
+            nibble = key - ord('a') + 10
+            cell = self.atu.eeprom[self.edit_address]
+            cell = (cell << 4) & 0xf0   # Move low nibble to high nibble
+            cell += nibble
+            self.atu.eeprom[self.edit_address] = cell
+
+        elif (key >= ord('A')) and (key <= ord('F')):
+            nibble = key - ord('A') + 10
+            cell = self.atu.eeprom[self.edit_address]
+            cell = (cell << 4) & 0xf0   # Move low nibble to high nibble
+            cell += nibble
+            self.atu.eeprom[self.edit_address] = cell
+
+        elif key != -1:                    # Not 'no key' - Show key usage
+            logging.warning(f'Unknown edit key: {key}')
+
+        if key != -1:                      # Not 'no key' - Refesh
+            if self.edit_address < 0:
+                self.edit_address = 0
+            if self.edit_address > 255:
+                self.edit_address = 255
+            self.show_eeprom()
+            self.show_configuration(False)
+            if current_address != self.edit_address:
+                self.edit_value = self.atu.eeprom[self.edit_address]
+
 
 
     def main(self, stdscr):
@@ -709,35 +866,22 @@ class atu100diag(object):
                 except:
                     pass                                
 
-            elif key == ord('a'):
-                self.toggle_auto()
-
-            elif key == ord('b'):
-                self.toggle_bypass()
-
-            elif key == ord('r'):
-                logging.info('Requesting reset')
-                self.atu.sendbool('Reset', True)
-
-            elif key == ord('s'):
-                logging.info('Requesting status')
-                self.update_var('Auto', '--------', C_EMPTY_DATA)
-                self.update_var('Bypass', '--------', C_EMPTY_DATA)
-                self.update_var('Event', ' ') 
-                self.atu.sendbool('Status', True)
-                self.process_state = ProcessState.PS_WAIT_STATUS
-
-            elif key == ord('t'):
-                self.start_tune()
-
-            elif key != -1:                    # Not 'no key' - Show key usage
-                 logging.warning(f'Unknown key: {key}')
+            else:
+                if self.edit_mode:
+                    self.process_edit_key(key)
+                else:
+                    self.process_normal_key(key)
 
             # Check for a new JSON message
 
             rxmsg = self.atu.getmsg()
             if rxmsg:
                 logging.debug(rxmsg)
+                for name in rxmsg:
+                    if name != '':
+                        value = rxmsg[name]
+                        break
+
                 if 'Board' in rxmsg:
                     logging.info('Received info message')
 
@@ -751,6 +895,13 @@ class atu100diag(object):
                 
                 elif 'Event' in rxmsg:
                     logging.info(f'Received event message: {rxmsg["Event"]}')
+
+                elif all(char in string.hexdigits for char in name):
+                    cell_address = int(name, 16)
+                    cell_data = int(value, 16)
+                    if (cell_address < 0x100) and (cell_data < 0x100):
+                        logging.info(f'Recieved cell up {cell_address:02x}: {self.atu.eeprom[cell_address]:02x} -> {cell_data:02x}')
+                        self.atu.eeprom[cell_address] = cell_data
 
                 else:
                     logging.warning(f'Received unknown message: {rxmsg}')

@@ -247,12 +247,12 @@ This is a minimal remote control ncurses command line program that communicates 
 ![Screenshot of atu100.py](docs/atu100remote.png)
 
 Keys are:
-* a - Toggles auto (automatic tuning)
-* b - Toggles bypass
-* q or `esc` - Exits the program
-* r - Resets the tuner (makes C = 0 and L=0)
-* s - Send the current status
-* t - Forces tuning
+* `a` - Toggles auto (automatic tuning)
+* `b` - Toggles bypass
+* `q` or `ESC` - Exits the program
+* `r` - Resets the tuner (makes C = 0 and L=0)
+* `s` - Send the current status
+* `t` - Forces tuning
 
 You can also double click on the `Auto`, `Bypass` and `Tune` screen areas to do the same as the `a`, `b` and `t` keys respectively.
 
@@ -264,12 +264,35 @@ Currently a work in progress.
 
 ![Screenshot of atu100diagnostics.py](docs/atu100diagnostics.png)
 
+There are two general mode:
+* Normal - Keys operate much like the `atu100remote.py` program.
+* Edit - Where you are editing an EEPROM cell value.
+
+In normal mode keys are:
+* `a` - Toggles auto (automatic tuning)
+* `b` - Toggles bypass
+* `e` - Enters edit mode
+* `q` or `ESC` - Exits the program
+* `r` - Resets the tuner (makes C = 0 and L=0)
+* `s` - Send the current status and downloads the EEPROM data again.  This takes about 10 seconds.
+* `t` - Forces tuning
+
+You can also double click on the `Auto`, `Bypass` and `Tune` screen areas to do the same as the `a`, `b` and `t` keys respectively.
+
+If you double click on an EEPROM cell value you will enter edit mode for it.
+
+In edit mode the cell being edited will be highlighted.  The keys are:
+* `0` to `9` and `a` to `f` - Copy low nibble to high nibble and set low nibble to the key value.  The new cell value is not sent to the tuner.
+* `Enter` - Sends cell value to tuner and exits edit mode.
+* Navigation key - Sends cell value to tuner amd moves to new location.
 
 EEPROM data colour coding:
 * Magenta: Valid data that is ignored.
-* Green: Valid data that is used as a setting, double click on it to see it's details.
+* Green: Valid data that is used as a setting.
+    * Double click on it to edit it.  Enter the hex values, then press `Enter` to apply the new value and exit editing.
 * Grey: Unused data.
 * White on red: Data that should not be used but is not blank and is not documented.  AKA WFT? data.
+* White on blue: Cell being edited.
 
 ## To do
 
