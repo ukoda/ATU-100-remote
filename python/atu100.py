@@ -220,9 +220,9 @@ class atu100(object):
                                     help='Log level: debug|info(default)|warn|error|critical')
         parse_general.add_argument('--newlog', default=False, action='store_true', help = 'Create a new log file')
         parse_config = parser.add_argument_group('Config', 'EEPROM config options')
-        parse_general.add_argument('-s', '--savefile', default='', help = 'Optional file to save EEPROM dump data to')
-        parse_general.add_argument('-a', '--address', default='', help = 'EEPROM address for get or set commands')
-        parse_general.add_argument('-d', '--data', default='', help = 'EEPROM data for set command')
+        parse_config.add_argument('-s', '--savefile', default='', help = 'Optional file to save EEPROM dump data to')
+        parse_config.add_argument('-a', '--address', default='', help = 'EEPROM address for get or set commands')
+        parse_config.add_argument('-d', '--data', default='', help = 'EEPROM data for set command')
 
         self.args = parser.parse_args()
 

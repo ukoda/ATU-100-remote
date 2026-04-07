@@ -186,7 +186,7 @@ This is a simple command line interface program:
 ```
 david@shigoto:~/Dev/transceiver/tuners/ATU-100-remote/python$ ./atu100.py -h
 usage: atu-100 [-h] [-p PORT] [-c COMMAND] [--logfile LOGFILE] [--log-level {debug,info,warn,error,critical}]
-               [--newlog]
+               [--newlog] [-s SAVEFILE] [-a ADDRESS] [-d DATA]
 
 Control program for ATU-100 tuner
 
@@ -199,12 +199,19 @@ General:
   -p PORT, --port PORT  Serial port for ATU-100
   -c COMMAND, --command COMMAND
                         Command, as listed below
-  -s SAVEFILE, --savefile SAVEFILE
-                        Optional file to save EEPROM data to
   --logfile LOGFILE     Log filename (atu100.log)
   --log-level {debug,info,warn,error,critical}
                         Log level: debug|info(default)|warn|error|critical
   --newlog              Create a new log file
+
+Config:
+  EEPROM config options
+
+  -s SAVEFILE, --savefile SAVEFILE
+                        Optional file to save EEPROM dump data to
+  -a ADDRESS, --address ADDRESS
+                        EEPROM address for get or set commands
+  -d DATA, --data DATA  EEPROM data for set command
 
 Commands can be:
  'a' - Disable auto tunning
@@ -212,10 +219,12 @@ Commands can be:
  'b' - Disable bypass
  'B' - Enable bypass
  'd' - Dump EEPROM contents
+ 'g' - Get EEPROM setting
  'r' - Reset tuner, C and L
+ 's' - Set EEPROM setting
  't' - Force tuning
-
 If no command supplied will show current status
+Address and data are assumed to be hex format
 ```
 
 ```
