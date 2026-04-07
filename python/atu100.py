@@ -86,6 +86,7 @@ class atu100(object):
         for address in range(0x100):
             self.eeprom.append(0xff)
 
+
     def connect(self, port):
         # Open the serial port
 
@@ -124,6 +125,16 @@ class atu100(object):
 
     def sendstr(self, name, value):
         msg = f'{{"{name}": "{value}"}}\n'
+        self.ser.write(msg.encode('ascii'))
+
+
+    def geteepromdata(self, address):
+        msg = f'{{"Get": {address}}}\n'
+        self.ser.write(msg.encode('ascii'))
+
+
+    def seteepromdata(self, address, data):
+        msg = f'{{"Set": {address}, "Value": {data}}}\n'
         self.ser.write(msg.encode('ascii'))
 
 
@@ -187,9 +198,12 @@ class atu100(object):
                       " 'b' - Disable bypass\n"
                       " 'B' - Enable bypass\n"
                       " 'd' - Dump EEPROM contents\n"
+                      " 'g' - Get EEPROM setting\n"
                       " 'r' - Reset tuner, C and L\n"
+                      " 's' - Set EEPROM setting\n"
                       " 't' - Force tuning\n"
                       "If no command supplied will show current status\n"
+                      "Address and data are assumed to be hex format\n"
         )
         parser = argparse.ArgumentParser(prog='atu-100',
                                          description='Control program for ATU-100 tuner',
@@ -199,13 +213,16 @@ class atu100(object):
         parse_general = parser.add_argument_group('General', 'General options')
         parse_general.add_argument('-p', '--port', default='/dev/ttyACM0', help = 'Serial port for ATU-100')
         parse_general.add_argument('-c', '--command', default='', help = 'Command, as listed below')
-        parse_general.add_argument('-s', '--savefile', default='', help = 'Optional file to save EEPROM data to')
         parse_general.add_argument('--logfile', default='atu100.log', help = 'Log filename (atu100.log)')
         parse_general.add_argument('--log-level', type=str,
                                     dest='log_level', default='info',
                                     choices=['debug', 'info', 'warn', 'error', 'critical'],
                                     help='Log level: debug|info(default)|warn|error|critical')
         parse_general.add_argument('--newlog', default=False, action='store_true', help = 'Create a new log file')
+        parse_config = parser.add_argument_group('Config', 'EEPROM config options')
+        parse_general.add_argument('-s', '--savefile', default='', help = 'Optional file to save EEPROM dump data to')
+        parse_general.add_argument('-a', '--address', default='', help = 'EEPROM address for get or set commands')
+        parse_general.add_argument('-d', '--data', default='', help = 'EEPROM data for set command')
 
         self.args = parser.parse_args()
 
@@ -249,12 +266,26 @@ class atu100(object):
             print('Reseting settings')
             eventexpected = True
             self.sendbool('Reset', True)
-            
 
         elif self.args.command == 't':
             print('Stating tuning')
             eventexpected = True
             self.sendbool('Tune', True)
+
+        elif self.args.command == 'g':
+            if self.args.address == '':
+                print('Use -a option to set address to get from')
+                sys.exit(10)
+            self.geteepromdata(int(self.args.address, 16))
+
+        elif self.args.command == 's':
+            if self.args.address == '':
+                print('Use -a option to set address to set data of')
+                sys.exit(10)
+            if self.args.data == '':
+                print('Use -d option to set data value to be set')
+                sys.exit(10)
+            self.seteepromdata(int(self.args.address, 16), int(self.args.data, 16))
 
         else:
             self.sendbool('Status', True)
@@ -279,6 +310,16 @@ class atu100(object):
                         print(f'Saved to {self.args.savefile}')
                     break
                 
+                elif self.args.command == 'g':
+                    for name in rxmsg:
+                        print(f'{name} = {rxmsg[name]}')
+                    break
+
+                elif self.args.command == 's':
+                    for name in rxmsg:
+                        print(f'{name} = {rxmsg[name]}')
+                    break
+
                 else:
                     result = False
                     for name in rxmsg:

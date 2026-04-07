@@ -57,7 +57,6 @@ From ATU, any field may be omitted if unchanged:
 }
 ```
 
-
 #### System state
 ```
 {
@@ -77,17 +76,6 @@ Where:
 * Order will be "CL" of the capacitor is before the inductor and "LC" if after it.
 * Capacitance is in pF.
 * Inductance is in nH.
-
-
-#### Settings
-
-Not implemented yet.
-```
-{
-    "timeout": 21
-}
-```
-Only setting that are actually used in the code are sent.
 
 
 #### EEPROM data
@@ -152,6 +140,28 @@ Dump the full EEPROM contents
 }
 ```
 
+#### Get EEPROM cell
+Get the contents of an EEPROM cell
+```
+{
+    "Get": 48
+}
+```
+* `Get` is the address in decimal
+
+
+#### Set EEPROM cell
+Set the value of an EEPROM cell
+```
+{
+    "Set": 48,
+    "Value": 1
+}
+```
+* `Set` is the address in decimal
+* `Value` is the data to save in the cell in decimal
+
+
 ### Non-JSON commands
 
 From the original zsteva code, sent outside the `{}` brackets:
@@ -189,6 +199,8 @@ General:
   -p PORT, --port PORT  Serial port for ATU-100
   -c COMMAND, --command COMMAND
                         Command, as listed below
+  -s SAVEFILE, --savefile SAVEFILE
+                        Optional file to save EEPROM data to
   --logfile LOGFILE     Log filename (atu100.log)
   --log-level {debug,info,warn,error,critical}
                         Log level: debug|info(default)|warn|error|critical
@@ -199,8 +211,10 @@ Commands can be:
  'A' - Enable auto tunning
  'b' - Disable bypass
  'B' - Enable bypass
+ 'd' - Dump EEPROM contents
  'r' - Reset tuner, C and L
  't' - Force tuning
+
 If no command supplied will show current status
 ```
 

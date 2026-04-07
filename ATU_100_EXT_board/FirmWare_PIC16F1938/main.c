@@ -427,8 +427,24 @@ void dump_eeprom()
 }
 
 
+void get_eeprom(int address)
+{
+    char addstr[3];
+    char datastr[3];
+
+    CLRWDT();
+    json_start();
+    bytetostr((uint8_t)address, addstr);
+    bytetostr(eeprom_read((uint8_t)address), datastr);
+    CLRWDT();
+    json_str(addstr, datastr);
+    json_end();
+}
+
+
 void button_proc(void) {
     char uartChar = uartGetChar();
+    static int cell;
 
     while (uartChar && (uartChar < 0x80)) {
         CLRWDT();
@@ -470,7 +486,16 @@ void button_proc(void) {
             break;
 
         case JRR_INT:
-            send_error();
+            if (strcmp(json_rx_name, "Get") == 0) {
+                get_eeprom(json_rx_int);
+            } else if (strcmp(json_rx_name, "Set") == 0) {
+                cell = json_rx_int;
+            } else if (strcmp(json_rx_name, "Value") == 0) {
+                eeprom_write((unsigned char)cell, (unsigned char)json_rx_int);
+                get_eeprom(cell);
+            } else {
+                send_error();
+            }
             break;
 
         case JRR_STR:

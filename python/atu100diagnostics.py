@@ -355,7 +355,8 @@ class atu100diag(object):
 
         self.mwin.noutrefresh()
         curses.doupdate()
-        self.process_state = ProcessState.PS_GOT_STATUS
+        if self.process_state == ProcessState.PS_WAIT_STATUS:
+            self.process_state = ProcessState.PS_GOT_STATUS
 
 
     def show_eeprom(self):
@@ -724,6 +725,7 @@ class atu100diag(object):
                 self.update_var('Bypass', '--------', C_EMPTY_DATA)
                 self.update_var('Event', ' ') 
                 self.atu.sendbool('Status', True)
+                self.process_state = ProcessState.PS_WAIT_STATUS
 
             elif key == ord('t'):
                 self.start_tune()
