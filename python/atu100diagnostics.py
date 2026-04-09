@@ -408,70 +408,103 @@ class atu100diag(object):
         return tens * 10 + units
 
 
+    def check_bcd(self, bcd):
+        tens = bcd // 16
+        units = bcd & 0xf
+        return (tens <= 9) and (units <= 9)
+
+
     def show_configuration(self, log):
-        row = 3
         address = cell.EEPROM_TIMEOUT_TIME
         value = self.atu.eeprom[address]
-        bcd = self.get_bcd(value)
-        valstr = f'Timeout {bcd} mS'
+        attr = C_GOOD_DATA
+        if self.check_bcd(value):
+            bcd = self.get_bcd(value)
+            valstr = f'Timeout {bcd} mS  '
+        else:
+            attr = C_BAD_DATA
+            valstr = 'Invalid timeout'
         if log:
             logging.info(valstr)
+        row = 3
         self.cwin.addstr(row, CONFIG_FIRST, f'{address:02x}:')
-        self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(C_GOOD_DATA))
+        self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(attr))
 
         address = cell.EEPROM_SWR_THRESHOLD
         value = self.atu.eeprom[address]
-        dec = value // 16
-        frac = value & 0xf
-        valstr = f'Auto SWR thres {dec}.{frac}'
+        attr = C_GOOD_DATA
+        if self.check_bcd(value):
+            dec = value // 16
+            frac = value & 0xf
+            valstr = f'Auto SWR thres {dec}.{frac}'
+        else:
+            attr = C_BAD_DATA
+            valstr = 'Invalid SWR       '
         if log:
             logging.info(valstr)
         self.cwin.addstr(row, CONFIG_SECOND, f'{address:02x}:')
-        self.cwin.addstr(row, CONFIG_SECONDD, valstr, curses.color_pair(C_GOOD_DATA))
+        self.cwin.addstr(row, CONFIG_SECONDD, valstr, curses.color_pair(attr))
 
         address = cell.EEPROM_MIN_POWER
         value = self.atu.eeprom[address]
-        bcd = self.get_bcd(value)
-        if self.atu.eeprom[cell.EEPROM_POWER_MEASURE_LEVEL] == 1:
-            bcd *= 10
-        valstr = f'Minimum power {bcd} W'
-        if log:
-            logging.info(valstr)
-        row += 1
-        self.cwin.addstr(row, CONFIG_FIRST, f'{address:02x}:')
-        self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(C_GOOD_DATA))
-
-        address = cell.EEPROM_MAX_POWER
-        value = self.atu.eeprom[address]
-        if value == 0:
-            valstr = 'No maximum power'
-        else:
+        attr = C_GOOD_DATA
+        if self.check_bcd(value):
             bcd = self.get_bcd(value)
             if self.atu.eeprom[cell.EEPROM_POWER_MEASURE_LEVEL] == 1:
                 bcd *= 10
-            valstr = f'Max power {bcd} W'
-        if log:
-            logging.info(valstr)
-        self.cwin.addstr(row, CONFIG_SECOND, f'{address:02x}:')
-        self.cwin.addstr(row, CONFIG_SECONDD, valstr, curses.color_pair(C_GOOD_DATA))
-
-        address = cell.EEPROM_MAX_INIT_SWR
-        value = self.atu.eeprom[address]
-        if value == 0:
-            valstr = 'No max initial SWR'
+            valstr = f'Minimum power {bcd:>2} W'
         else:
-            dec = value // 16
-            frac = value & 0xf
-            valstr = f'Max init SWR {dec}.{frac}'
+            attr = C_BAD_DATA
+            valstr = 'Invalid min power '
         if log:
             logging.info(valstr)
         row += 1
         self.cwin.addstr(row, CONFIG_FIRST, f'{address:02x}:')
-        self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(C_GOOD_DATA))
+        self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(attr))
+
+        address = cell.EEPROM_MAX_POWER
+        value = self.atu.eeprom[address]
+        attr = C_GOOD_DATA
+        if value == 0:
+            valstr = 'No maximum power'
+        else:
+            if self.check_bcd(value):
+                bcd = self.get_bcd(value)
+                if self.atu.eeprom[cell.EEPROM_POWER_MEASURE_LEVEL] == 1:
+                    bcd *= 10
+                valstr = f'Maximum power {bcd:>2} W'
+            else:
+                attr = C_BAD_DATA
+                valstr = 'Invalid min power'
+        if log:
+            logging.info(valstr)
+        self.cwin.addstr(row, CONFIG_SECOND, f'{address:02x}:')
+        self.cwin.addstr(row, CONFIG_SECONDD, valstr, curses.color_pair(attr))
+
+        address = cell.EEPROM_MAX_INIT_SWR
+        value = self.atu.eeprom[address]
+        attr = C_GOOD_DATA
+        if value == 0:
+            valstr = 'No max initial SWR'
+        else:
+            if self.check_bcd(value):
+                dec = value // 16
+                frac = value & 0xf
+                valstr = f'Max init SWR {dec}.{frac}  '
+            else:
+                attr = C_BAD_DATA
+                valstr = 'Invalid SWR       '
+        if log:
+            logging.info(valstr)
+        row += 1
+        self.cwin.addstr(row, CONFIG_FIRST, f'{address:02x}:')
+        self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(attr))
 
         address = cell.EEPROM_NUMBER_INDS
         value = self.atu.eeprom[address]
+        iattr = C_GOOD_DATA
         if (value < 5) or (value > 7):
+            iattr = C_BAD_DATA
             num_inductors = 0
             if log:
                 logging.warning(f'{address:02x}: Number of inductors invalid')
@@ -492,13 +525,16 @@ class atu100diag(object):
             if log:
                 logging.info(f'{address:02x}: Inductors linear pitch')
         else:
+            iattr = C_BAD_DATA
             num_inductors = 0
             if log:
                 logging.warning(f'{address:02x}: Inductors pitch invalid')
 
         address = cell.EEPROM_NUMBER_CAPS
         value = self.atu.eeprom[address]
+        cattr = C_GOOD_DATA
         if (value < 5) or (value > 7):
+            cattr = C_BAD_DATA
             num_capacitors = 0
             if log:
                 logging.warning(f'{address:02x}: Number of capacitors invalid')
@@ -519,6 +555,7 @@ class atu100diag(object):
             if log:
                 logging.info(f'{address:02x}: Capacitors linear pitch')
         else:
+            cattr = C_BAD_DATA
             num_capacitors = 0
             if log:
                 logging.warning(f'{address:02x}: Capacitors pitch invalid')
@@ -532,7 +569,7 @@ class atu100diag(object):
             valstr = 'Linearity correct'
         else:
             attr =C_BAD_DATA
-            valstr = 'Invalid linear cor'
+            valstr = 'Invalid linear   '
         if log:
             logging.info(valstr)
         self.cwin.addstr(row, CONFIG_SECOND, f'{address:02x}:')
@@ -542,7 +579,7 @@ class atu100diag(object):
         value = self.atu.eeprom[address]
         attr = C_GOOD_DATA
         if value == 0:
-            valstr = 'Normal ind relays'
+            valstr = 'Normal ind relays '
         elif value == 1:
             valstr = 'Inverse ind relays'
         else:
@@ -565,11 +602,11 @@ class atu100diag(object):
             if log:
                 logging.info(valstr)
             self.cwin.addstr(1, 1, 'Inds (nH): ')
-            self.cwin.addstr(1, 12, valstr, curses.color_pair(C_GOOD_DATA))
+            self.cwin.addstr(1, 12, valstr, curses.color_pair(iattr))
         elif linear_inds:
-            self.cwin.addstr(1, 1, 'Linear spacing of inductors', curses.color_pair(C_GOOD_DATA))
+            self.cwin.addstr(1, 1, 'Linear spacing of inductors                  ', curses.color_pair(C_GOOD_DATA))
         else:
-            self.cwin.addstr(1, 1, 'Invalid number of inductors', curses.color_pair(C_BAD_DATA))
+            self.cwin.addstr(1, 1, 'Invalid number of inductors or spacing       ', curses.color_pair(C_BAD_DATA))
 
         if num_capacitors > 0:
             valstr = ''
@@ -582,22 +619,22 @@ class atu100diag(object):
             if log:
                 logging.info(valstr)
             self.cwin.addstr(2, 1, 'Caps (pf): ')
-            self.cwin.addstr(2, 12, valstr, curses.color_pair(C_GOOD_DATA))
+            self.cwin.addstr(2, 12, valstr, curses.color_pair(cattr))
         elif linear_caps:
-            self.cwin.addstr(2, 1, 'Linear spacing of capacitors', curses.color_pair(C_GOOD_DATA))
+            self.cwin.addstr(2, 1, 'Linear spacing of capacitors                 ', curses.color_pair(C_GOOD_DATA))
         else:
-            self.cwin.addstr(2, 1, 'Invalid number of capacitors', curses.color_pair(C_BAD_DATA))
+            self.cwin.addstr(2, 1, 'Invalid number of capacitors or spacing      ', curses.color_pair(C_BAD_DATA))
 
         address = cell.EEPROM_POWER_MEASURE_LEVEL
         value = self.atu.eeprom[address]
         attr = C_GOOD_DATA
         if value == 0:
-            valstr = 'Measure to 999 W'
+            valstr = 'Measure to 999 W '
         elif value == 1:
             valstr = 'Measure to 9999 W'
         else:
-            attr =C_BAD_DATA
-            valstr = 'Invalid range'
+            attr = C_BAD_DATA
+            valstr = 'Invalid range    '
         if log:
             logging.info(valstr)
         self.cwin.addstr(row, CONFIG_SECOND, f'{address:02x}:')
@@ -605,24 +642,29 @@ class atu100diag(object):
 
         address = cell.EEPROM_TANDEM_MATCH
         value = self.atu.eeprom[address]
-        bcd = self.get_bcd(value)
-        valstr = f'Tandum match 1:{bcd}'
+        attr = C_GOOD_DATA
+        if self.check_bcd(value):
+            bcd = self.get_bcd(value)
+            valstr = f'Tandum match 1:{bcd}  '
+        else:
+            attr = C_BAD_DATA
+            valstr = 'Invalid tandum match'
         if log:
             logging.info(valstr)
         row += 1
         self.cwin.addstr(row, CONFIG_FIRST, f'{address:02x}:')
-        self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(C_GOOD_DATA))
+        self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(attr))
 
         address = cell.EEPROM_ADDITIONAL_INDICATION
         value = self.atu.eeprom[address]
         attr = C_GOOD_DATA
         if value == 0:
-            valstr = 'LC indication only'
+            valstr = 'LC indication only '
         elif value == 1:
             valstr = 'Efficeny indication'
         else:
-            attr =C_BAD_DATA
-            valstr = 'Invalid indication'
+            attr = C_BAD_DATA
+            valstr = 'Invalid indication '
         if log:
             logging.info(valstr)
         self.cwin.addstr(row, CONFIG_SECOND, f'{address:02x}:')
@@ -630,17 +672,22 @@ class atu100diag(object):
 
         address = cell.EEPROM_FEEDER_LOSS
         value = self.atu.eeprom[address]
+        attr = C_GOOD_DATA
         if value == 0:
             valstr = 'Feed loss ignored'
         else:
-            dec = value // 16
-            frac = value & 0xf
-            valstr = f'Feed loss 1:{dec}.{frac}'
+            if self.check_bcd(value):
+                dec = value // 16
+                frac = value & 0xf
+                valstr = f'Feed loss 1:{dec}.{frac}  '
+            else:
+                attr = C_BAD_DATA
+                valstr = 'Invalid feed loss'
         if log:
             logging.info(valstr)
         row += 1
         self.cwin.addstr(row, CONFIG_FIRST, f'{address:02x}:')
-        self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(C_GOOD_DATA))
+        self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(attr))
 
         address = cell.EEPROM_DISABLE_RELAYS
         value = self.atu.eeprom[address]
@@ -877,10 +924,15 @@ class atu100diag(object):
             rxmsg = self.atu.getmsg()
             if rxmsg:
                 logging.debug(rxmsg)
+
+                # Get the name and value of the first dictonary entry
+
                 for name in rxmsg:
                     if name != '':
                         value = rxmsg[name]
                         break
+
+                # Handle based on message type
 
                 if 'Board' in rxmsg:
                     logging.info('Received info message')
