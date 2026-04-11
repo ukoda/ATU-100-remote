@@ -379,12 +379,6 @@ class atu100remote(object):
                     else:
                         logging.info(f'Ignored {name} = {rxmsg[name]}')
 
-            # Update information on screen
-
-            # self.update_var('Level', f'{self.bat_percent:.1f}') 
-            # self.update_var('Voltage', f'{self.bat_volts:.3f}')
-            # self.update_var('Current', f'{self.bat_current:.4f}', attr=current_colour) 
-
             self.mwin.noutrefresh()
             curses.doupdate()
 

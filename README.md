@@ -125,7 +125,7 @@ NB:
 ```
 
 #### Start tuning
-Other commands will ignored until it has completed
+Other commands will ignored until it has completed:
 ```
 {
     "Tune": true
@@ -133,7 +133,7 @@ Other commands will ignored until it has completed
 ```
 
 #### Dump EEPROM contents
-Dump the full EEPROM contents
+Dump the full EEPROM contents:
 ```
 {
     "Dump": "EEPROM"
@@ -141,7 +141,7 @@ Dump the full EEPROM contents
 ```
 
 #### Get EEPROM cell
-Get the contents of an EEPROM cell
+Get the contents of an EEPROM cell:
 ```
 {
     "Get": 48
@@ -149,9 +149,8 @@ Get the contents of an EEPROM cell
 ```
 * `Get` is the address in decimal
 
-
 #### Set EEPROM cell
-Set the value of an EEPROM cell
+Set the value of an EEPROM cell:
 ```
 {
     "Set": 48,
@@ -160,6 +159,16 @@ Set the value of an EEPROM cell
 ```
 * `Set` is the address in decimal
 * `Value` is the data to save in the cell in decimal
+
+#### Set relays
+Set the relays to effectively set inductance, capacitance and order:
+```
+{
+    "RelayI": 127,
+    "RelayC": 255
+}
+```
+The data is a bit set of relays to turn on.  For the capacitor set bit 7 is filter type relay.
 
 
 ### Non-JSON commands
@@ -314,6 +323,19 @@ g_c_SW = !g_c_SW;
 ```
 
 Some header files do not have protection from multiple inclusion and some, such as `main.h` have `static` type declaration that given the intended scope should be defined in the related c file.  Likewise the regular code in the header files too.
+
+## Other docmentation
+
+In the `docs` folder there is the schematic and original user guide.
+
+The user guide details the settings for most to the EEPROM cells.  Some undocumented cells are also used.  One new setting cell at the end of the settings (35) and four at the end of the EEPROM area, from (fa) that are caching the board state over restarts and power cycles.
+
+The new cells are:
+* `35` - Disable relays, probably a boolean.
+* `fb` - Last SWR.  May be also using `fc`.
+* `fd` - Last SW 1.
+* `fe` - Last inductor, bit set of the inductors that where active.
+* `ff` - Last capacitor, bit set of the capacitors that where active.
 
 ## Acknowledgements
 

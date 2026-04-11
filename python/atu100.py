@@ -19,6 +19,7 @@ import datetime
 import json
 import logging
 import serial.tools.list_ports
+import string
 import sys
 
 from datetime import datetime
@@ -81,10 +82,15 @@ class atu100(object):
         self.order       = 'LC'
         self.capacitance = 0
         self.inductance  = 0
+        self.relay_order = False
+        self.relay_cap   = [False, False, False, False, False, False, False]
+        self.relay_ind   = [False, False, False, False, False, False, False]
         # Tuner settings
         self.eeprom      = []
         for address in range(0x100):
             self.eeprom.append(0xff)
+        self.value_cap   = [0, 0, 0, 0, 0, 0, 0]
+        self.value_ind   = [0, 0, 0, 0, 0, 0, 0]
 
 
     def connect(self, port):
@@ -123,6 +129,11 @@ class atu100(object):
         self.ser.write(msg.encode('ascii'))
 
 
+    def sendint(self, name, value):
+        msg = f'{{"{name}": {value}}}\n'
+        self.ser.write(msg.encode('ascii'))
+
+
     def sendstr(self, name, value):
         msg = f'{{"{name}": "{value}"}}\n'
         self.ser.write(msg.encode('ascii'))
@@ -138,6 +149,11 @@ class atu100(object):
         self.ser.write(msg.encode('ascii'))
 
 
+    def get_bcd(self, bcd):
+        tens = bcd // 16
+        units = bcd & 0xf
+        return tens * 10 + units
+        
     def getmsg(self):
         result = None
         rxd = self.ser.read()
@@ -156,7 +172,42 @@ class atu100(object):
                         result = json.loads( self.json_buffer)
                     except:
                         logging.warning(f'Invalid JSON reveived: [{self.json_buffer}]')
+
+                    if result:
+
+                        # We have a valid JSON message from the tuner, check the info in it
+
+                        for name in result:
+                            value = result[name]
+                            if all(char in string.hexdigits for char in name):
+                                cell_address = int(name, 16)
+                                cell_data = int(value, 16)
+                                if (cell_address < 0x100) and (cell_data < 0x100):
+
+                                    # We have a EEPROM cell value, save it and use to get setting info
+
+                                    self.eeprom[cell_address] = cell_data
+                                    if (cell_address >= cell.EEPROM_INDUCTOR_FIRST) and (cell_address <= cell.EEPROM_INDUCTOR_LAST):
+                                        offset = cell_address - cell.EEPROM_INDUCTOR_FIRST
+                                        highbyte = (offset % 2) == 0
+                                        offset //= 2
+                                        if highbyte:
+                                            self.value_ind[offset] = self.get_bcd(cell_data) * 100
+                                        else:
+                                            self.value_ind[offset] += self.get_bcd(cell_data)
+                                            logging.info(f'Inductor {offset} is {self.value_ind[offset]}')
+                                    elif (cell_address >= cell.EEPROM_CAPACITOR_FIRST) and (cell_address <= cell.EEPROM_CAPACITOR_LAST):
+                                        offset = cell_address - cell.EEPROM_CAPACITOR_FIRST
+                                        highbyte = (offset % 2) == 0
+                                        offset //= 2
+                                        if highbyte:
+                                            self.value_cap[offset] = self.get_bcd(cell_data) * 100
+                                        else:
+                                            self.value_cap[offset] += self.get_bcd(cell_data)
+                                            logging.info(f'Capacitor {offset} is {self.value_cap[offset]}')
+
                     return result
+
                 rxd = self.ser.read()
         else:
             while (rxd):
@@ -197,10 +248,16 @@ class atu100(object):
                       " 'A' - Enable auto tunning\n"
                       " 'b' - Disable bypass\n"
                       " 'B' - Enable bypass\n"
+                      " 'c' - Capacitor relay on\n"
+                      " 'C' - Capacitor relay off\n"
                       " 'd' - Dump EEPROM contents\n"
-                      " 'g' - Get EEPROM setting\n"
+                      " 'f' - Capacitor first\n"
+                      " 'g' - Get an EEPROM setting\n"
+                      " 'i' - Inductor relay off\n"
+                      " 'I' - Inductor relay on\n"
+                      " 'l' - Capacitor last\n"
                       " 'r' - Reset tuner, C and L\n"
-                      " 's' - Set EEPROM setting\n"
+                      " 's' - Set an EEPROM setting\n"
                       " 't' - Force tuning\n"
                       "If no command supplied will show current status\n"
                       "Address and data are assumed to be hex format\n"
@@ -223,6 +280,7 @@ class atu100(object):
         parse_config.add_argument('-s', '--savefile', default='', help = 'Optional file to save EEPROM dump data to')
         parse_config.add_argument('-a', '--address', default='', help = 'EEPROM address for get or set commands')
         parse_config.add_argument('-d', '--data', default='', help = 'EEPROM data for set command')
+        parse_config.add_argument('-r', '--relay', default='', help = 'Relay number')
 
         self.args = parser.parse_args()
 
@@ -261,6 +319,16 @@ class atu100(object):
         elif self.args.command == 'd':
             print('Dumping EEPROM, this will take about 10 seconds')
             self.sendstr('Dump', 'EEPROM')
+
+        elif self.args.command == 'f':
+            print('Set capacitor first relay i.e CL')
+            self.sendint('RelayC', 0)
+            self.sendbool('Status', True)
+
+        elif self.args.command == 'l':
+            print('Set capacitor first relay i.e LC')
+            self.sendint('RelayC', 128)
+            self.sendbool('Status', True)
 
         elif self.args.command == 'r':
             print('Reseting settings')

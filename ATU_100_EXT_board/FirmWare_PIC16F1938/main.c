@@ -493,6 +493,22 @@ void button_proc(void) {
             } else if (strcmp(json_rx_name, "Value") == 0) {
                 eeprom_write((unsigned char)cell, (unsigned char)json_rx_int);
                 get_eeprom(cell);
+            } else if (strcmp(json_rx_name, "RelayI") == 0) {
+                g_c_ind = (char)json_rx_int;
+                set_ind(g_c_ind);
+                eeprom_write(EEPROM_LAST_IND, g_c_ind);
+                new_state = true;
+            } else if (strcmp(json_rx_name, "RelayC") == 0) {
+                g_c_cap = (char)json_rx_int & 0x7f;
+                if (json_rx_int & 0x80)
+                    g_c_SW = 1;
+                else
+                    g_c_SW = 0;
+                set_cap(g_c_cap);
+                eeprom_write(EEPROM_LAST_CAP, g_c_cap);
+                set_sw(g_c_SW);
+                eeprom_write(EEPROM_LAST_SW, g_c_SW);
+                new_state = true;
             } else {
                 send_error();
             }

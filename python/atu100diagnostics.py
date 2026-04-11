@@ -190,7 +190,7 @@ class atu100diag(object):
         curses.init_pair(C_GOOD_DATA,  curses.COLOR_GREEN,   curses.COLOR_BLACK)
         curses.init_pair(C_BAD_DATA,   curses.COLOR_WHITE,   curses.COLOR_RED)
         curses.init_pair(C_WARN_DATA,  curses.COLOR_MAGENTA, curses.COLOR_BLACK)
-        curses.init_pair(C_NOTE_DATA,  curses.COLOR_BLUE,    curses.COLOR_BLACK)
+        curses.init_pair(C_NOTE_DATA,  curses.COLOR_GREEN,    curses.COLOR_WHITE)
         curses.init_pair(C_EDIT_DATA,  curses.COLOR_WHITE,   curses.COLOR_BLUE)
         curses.init_pair(C_EMPTY_DATA, curses.COLOR_WHITE,   curses.COLOR_BLACK)
         self.mwin.clear()
@@ -402,12 +402,6 @@ class atu100diag(object):
         curses.doupdate()
 
 
-    def get_bcd(self, bcd):
-        tens = bcd // 16
-        units = bcd & 0xf
-        return tens * 10 + units
-
-
     def check_bcd(self, bcd):
         tens = bcd // 16
         units = bcd & 0xf
@@ -419,7 +413,7 @@ class atu100diag(object):
         value = self.atu.eeprom[address]
         attr = C_GOOD_DATA
         if self.check_bcd(value):
-            bcd = self.get_bcd(value)
+            bcd = self.atu.get_bcd(value)
             valstr = f'Timeout {bcd} mS  '
         else:
             attr = C_BAD_DATA
@@ -449,7 +443,7 @@ class atu100diag(object):
         value = self.atu.eeprom[address]
         attr = C_GOOD_DATA
         if self.check_bcd(value):
-            bcd = self.get_bcd(value)
+            bcd = self.atu.get_bcd(value)
             if self.atu.eeprom[cell.EEPROM_POWER_MEASURE_LEVEL] == 1:
                 bcd *= 10
             valstr = f'Minimum power {bcd:>2} W'
@@ -469,7 +463,7 @@ class atu100diag(object):
             valstr = 'No maximum power'
         else:
             if self.check_bcd(value):
-                bcd = self.get_bcd(value)
+                bcd = self.atu.get_bcd(value)
                 if self.atu.eeprom[cell.EEPROM_POWER_MEASURE_LEVEL] == 1:
                     bcd *= 10
                 valstr = f'Maximum power {bcd:>2} W'
@@ -592,34 +586,32 @@ class atu100diag(object):
         self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(attr))
 
         if num_inductors > 0:
-            valstr = ''
-            for relay in range(num_inductors):
-                if relay != 0:
-                    valstr += ' '
-                value = self.get_bcd(self.atu.eeprom[cell.EEPROM_INDUCTOR_FIRST + relay * 2]) * 100
-                value += self.get_bcd(self.atu.eeprom[cell.EEPROM_INDUCTOR_FIRST + relay * 2 + 1])
-                valstr += f'{value:>4}'
-            if log:
-                logging.info(valstr)
             self.cwin.addstr(1, 1, 'Inds (nH): ')
-            self.cwin.addstr(1, 12, valstr, curses.color_pair(iattr))
+            for relay in range(num_inductors):
+                valstr = f'{self.atu.value_ind[relay]:>4}'
+                attr = iattr
+                if (iattr == C_GOOD_DATA) and self.atu.relay_ind[relay]:
+                    attr = C_NOTE_DATA
+                self.cwin.addstr(1, 12 + relay * 5, valstr, curses.color_pair(attr))
+                if log:
+                    logging.info(f'Inductor {relay} is {valstr} nH')
+
         elif linear_inds:
             self.cwin.addstr(1, 1, 'Linear spacing of inductors                  ', curses.color_pair(C_GOOD_DATA))
         else:
             self.cwin.addstr(1, 1, 'Invalid number of inductors or spacing       ', curses.color_pair(C_BAD_DATA))
 
         if num_capacitors > 0:
-            valstr = ''
-            for relay in range(num_capacitors):
-                if relay != 0:
-                    valstr += ' '
-                value = self.get_bcd(self.atu.eeprom[cell.EEPROM_CAPACITOR_FIRST + relay * 2]) * 100
-                value += self.get_bcd(self.atu.eeprom[cell.EEPROM_CAPACITOR_FIRST + relay * 2 + 1])
-                valstr += f'{value:>4}'
-            if log:
-                logging.info(valstr)
             self.cwin.addstr(2, 1, 'Caps (pf): ')
-            self.cwin.addstr(2, 12, valstr, curses.color_pair(cattr))
+            for relay in range(num_inductors):
+                valstr = f'{self.atu.value_cap[relay]:>4}'
+                attr = iattr
+                if (iattr == C_GOOD_DATA) and self.atu.relay_cap[relay]:
+                    attr = C_NOTE_DATA
+                self.cwin.addstr(2, 12 + relay * 5, valstr, curses.color_pair(attr))
+                if log:
+                    logging.info(f'Capacitor {relay} is {valstr} pF')
+
         elif linear_caps:
             self.cwin.addstr(2, 1, 'Linear spacing of capacitors                 ', curses.color_pair(C_GOOD_DATA))
         else:
@@ -644,7 +636,7 @@ class atu100diag(object):
         value = self.atu.eeprom[address]
         attr = C_GOOD_DATA
         if self.check_bcd(value):
-            bcd = self.get_bcd(value)
+            bcd = self.atu.get_bcd(value)
             valstr = f'Tandum match 1:{bcd}  '
         else:
             attr = C_BAD_DATA
@@ -739,9 +731,9 @@ class atu100diag(object):
 
 
     def process_eeprom_msg(self, rxmsg):
-        for name in rxmsg:
-            address = int(name, 16)
-            self.atu.eeprom[address] = int(rxmsg[name], 16)
+        # for name in rxmsg:
+        #     address = int(name, 16)
+        #     self.atu.eeprom[address] = int(rxmsg[name], 16)
         self.show_eeprom()
         self.show_configuration(True)
         self.process_state = ProcessState.PS_GOT_EEPROM
@@ -952,8 +944,8 @@ class atu100diag(object):
                     cell_address = int(name, 16)
                     cell_data = int(value, 16)
                     if (cell_address < 0x100) and (cell_data < 0x100):
-                        logging.info(f'Recieved cell up {cell_address:02x}: {self.atu.eeprom[cell_address]:02x} -> {cell_data:02x}')
-                        self.atu.eeprom[cell_address] = cell_data
+                        logging.info(f'Received cell update {cell_address:02x}: = {cell_data:02x}')
+#                        self.atu.eeprom[cell_address] = cell_data
 
                 else:
                     logging.warning(f'Received unknown message: {rxmsg}')
