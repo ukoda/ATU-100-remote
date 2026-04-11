@@ -333,7 +333,7 @@ The user guide details the settings for most to the EEPROM cells.  Some undocume
 The new cells are:
 * `35` - Disable relays, probably a boolean.
 * `fb` - Last SWR.  May be also using `fc`.
-* `fd` - Last SW 1.
+* `fd` - Last capacitor/inductor order.
 * `fe` - Last inductor, bit set of the inductors that where active.
 * `ff` - Last capacitor, bit set of the capacitors that where active.
 

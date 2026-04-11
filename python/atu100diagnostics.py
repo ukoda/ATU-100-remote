@@ -190,7 +190,7 @@ class atu100diag(object):
         curses.init_pair(C_GOOD_DATA,  curses.COLOR_GREEN,   curses.COLOR_BLACK)
         curses.init_pair(C_BAD_DATA,   curses.COLOR_WHITE,   curses.COLOR_RED)
         curses.init_pair(C_WARN_DATA,  curses.COLOR_MAGENTA, curses.COLOR_BLACK)
-        curses.init_pair(C_NOTE_DATA,  curses.COLOR_GREEN,    curses.COLOR_WHITE)
+        curses.init_pair(C_NOTE_DATA,  curses.COLOR_BLACK,   curses.COLOR_GREEN)
         curses.init_pair(C_EDIT_DATA,  curses.COLOR_WHITE,   curses.COLOR_BLUE)
         curses.init_pair(C_EMPTY_DATA, curses.COLOR_WHITE,   curses.COLOR_BLACK)
         self.mwin.clear()

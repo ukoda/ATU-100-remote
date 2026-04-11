@@ -148,6 +148,15 @@ class atu100(object):
         msg = f'{{"Set": {address}, "Value": {data}}}\n'
         self.ser.write(msg.encode('ascii'))
 
+    def send_relay_inductors(self):
+        bit = 0x1
+        relaybits = 0
+        for relay in range(7):
+            if self.relay_ind[relay]:
+                relaybits += bit
+            bit *= 2
+        self.sendint('RelayI', relaybits)
+        self.sendbool('Status', True)
 
     def get_bcd(self, bcd):
         tens = bcd // 16
@@ -196,6 +205,7 @@ class atu100(object):
                                         else:
                                             self.value_ind[offset] += self.get_bcd(cell_data)
                                             logging.info(f'Inductor {offset} is {self.value_ind[offset]}')
+
                                     elif (cell_address >= cell.EEPROM_CAPACITOR_FIRST) and (cell_address <= cell.EEPROM_CAPACITOR_LAST):
                                         offset = cell_address - cell.EEPROM_CAPACITOR_FIRST
                                         highbyte = (offset % 2) == 0
@@ -205,6 +215,21 @@ class atu100(object):
                                         else:
                                             self.value_cap[offset] += self.get_bcd(cell_data)
                                             logging.info(f'Capacitor {offset} is {self.value_cap[offset]}')
+
+                                    elif cell_address == cell.EEPROM_LAST_SW:
+                                        self.relay_order = cell_data == '01'
+                                            
+                                    elif cell_address == cell.EEPROM_LAST_IND:
+                                        bit = 0x1
+                                        for relay in range(7):
+                                            self.relay_ind[relay] = bit & cell_data
+                                            bit *= 2
+
+                                    elif cell_address == cell.EEPROM_LAST_CAP:
+                                        bit = 0x1
+                                        for relay in range(7):
+                                            self.relay_cap[relay] = bit & cell_data
+                                            bit *= 2
 
                     return result
 
@@ -240,6 +265,53 @@ class atu100(object):
         self.sendbool('Tune', True)
 
 
+    def _print_msg(self, rxmsg):
+        for name in rxmsg:
+            if name == 'Auto':
+                self.auto = rxmsg[name]
+                if rxmsg[name]:
+                    print('Auto:        Enabled')
+                else:
+                    print('Auto:        Disabled')
+
+            elif name == 'Bypass':
+                self.bypass = rxmsg[name]
+                if rxmsg[name]:
+                    print('Bypass:      Enabled')
+                else:
+                    print('Bypass:      Disabled')
+
+            elif name == 'Power':
+                self.power = rxmsg[name]
+                print(f'Power:       {self.power:.1f}') 
+
+            elif name == 'SWR':
+                self.swr = rxmsg[name]
+                print(f'SWR:         {self.swr:.1f}') 
+
+            elif name == 'Reverse':
+                self.reverse = rxmsg[name]
+                print(f'Reverse:     {self.reverse:.1f}') 
+
+            elif name == 'Event':
+                print(f'{name+":":12} {rxmsg[name]}')
+
+            elif name == 'Order':
+                self.order = rxmsg[name]
+                print(f'{name+":":12} {rxmsg[name]}') 
+
+            elif name == 'Capacitance':
+                self.capacitance = rxmsg[name]
+                print(f'Capacitance: {self.capacitance} pF') 
+
+            elif name == 'Inductance':
+                self.inductance = rxmsg[name]
+                print(f'Inductance:  {self.inductance} nH') 
+
+            else:
+                print(f'{name+":":12}: {rxmsg[name]}') 
+
+
     def main(self):
         # Get the command line args
 
@@ -252,12 +324,12 @@ class atu100(object):
                       " 'C' - Capacitor relay off\n"
                       " 'd' - Dump EEPROM contents\n"
                       " 'f' - Capacitor first\n"
-                      " 'g' - Get an EEPROM setting\n"
+                      " 'g' - Get an EEPROM cell\n"
                       " 'i' - Inductor relay off\n"
                       " 'I' - Inductor relay on\n"
                       " 'l' - Capacitor last\n"
                       " 'r' - Reset tuner, C and L\n"
-                      " 's' - Set an EEPROM setting\n"
+                      " 's' - Set an EEPROM cell\n"
                       " 't' - Force tuning\n"
                       "If no command supplied will show current status\n"
                       "Address and data are assumed to be hex format\n"
@@ -280,7 +352,7 @@ class atu100(object):
         parse_config.add_argument('-s', '--savefile', default='', help = 'Optional file to save EEPROM dump data to')
         parse_config.add_argument('-a', '--address', default='', help = 'EEPROM address for get or set commands')
         parse_config.add_argument('-d', '--data', default='', help = 'EEPROM data for set command')
-        parse_config.add_argument('-r', '--relay', default='', help = 'Relay number')
+        parse_config.add_argument('-r', '--relay', default=0, help = 'Relay number, 0 to 6')
 
         self.args = parser.parse_args()
 
@@ -330,6 +402,14 @@ class atu100(object):
             self.sendint('RelayC', 128)
             self.sendbool('Status', True)
 
+        elif self.args.command == 'i':
+            print(f'Turn off inductor relay {self.args.relay}')
+            self.geteepromdata(cell.EEPROM_LAST_IND)
+
+        elif self.args.command == 'I':
+            print(f'Turn on inductor relay {self.args.relay}')
+            self.geteepromdata(cell.EEPROM_LAST_IND)
+
         elif self.args.command == 'r':
             print('Reseting settings')
             eventexpected = True
@@ -370,6 +450,9 @@ class atu100(object):
             if rxmsg:
                 logging.debug(rxmsg)
                 print()
+
+                # EEPROM Dump command
+
                 if self.args.command == 'd':
                     print(json.dumps(rxmsg, indent=4))
                     if self.args.savefile != '':
@@ -377,65 +460,37 @@ class atu100(object):
                             jsonfile.write(json.dumps(rxmsg, indent=4))
                         print(f'Saved to {self.args.savefile}')
                     break
+
+                # Get EEPROM cell
                 
                 elif self.args.command == 'g':
                     for name in rxmsg:
                         print(f'{name} = {rxmsg[name]}')
                     break
 
+                # Set EEPROM cell
+
                 elif self.args.command == 's':
                     for name in rxmsg:
                         print(f'{name} = {rxmsg[name]}')
                     break
 
+                # Turn on inductor relay
+
+                elif (self.args.command == 'i') or (self.args.command == 'I'):
+                    if 'fe' in rxmsg:
+                        logging.info(f'Inductor relays were {rxmsg["fe"]}')
+                        self.relay_ind[int(self.args.relay)] = self.args.command == 'I'
+                        self.send_relay_inductors()
+                    else:
+                        result = 'Power' in rxmsg
+                        self._print_msg(rxmsg)
+                        if result:
+                            break
+
                 else:
-                    result = False
-                    for name in rxmsg:
-                        if name == 'Auto':
-                            self.auto = rxmsg[name]
-                            if rxmsg[name]:
-                                print('Auto:        Enabled')
-                            else:
-                                print('Auto:        Disabled')
-
-                        elif name == 'Bypass':
-                            self.bypass = rxmsg[name]
-                            if rxmsg[name]:
-                                print('Bypass:      Enabled')
-                            else:
-                                print('Bypass:      Disabled')
-
-                        elif name == 'Power':
-                            self.power = rxmsg[name]
-                            print(f'Power:       {self.power:.1f}') 
-                            result = True
-
-                        elif name == 'SWR':
-                            self.swr = rxmsg[name]
-                            print(f'SWR:         {self.swr:.1f}') 
-
-                        elif name == 'Reverse':
-                            self.reverse = rxmsg[name]
-                            print(f'Reverse:     {self.reverse:.1f}') 
-
-                        elif name == 'Event':
-                            print(f'{name+":":12} {rxmsg[name]}')
-
-                        elif name == 'Order':
-                            self.order = rxmsg[name]
-                            print(f'{name+":":12} {rxmsg[name]}') 
-
-                        elif name == 'Capacitance':
-                            self.capacitance = rxmsg[name]
-                            print(f'Capacitance: {self.capacitance} pF') 
-
-                        elif name == 'Inductance':
-                            self.inductance = rxmsg[name]
-                            print(f'Inductance:  {self.inductance} nH') 
-
-                        else:
-                            print(f'{name+":":12}: {rxmsg[name]}') 
-                    
+                    result = 'Power' in rxmsg
+                    self._print_msg(rxmsg)
                     if result:
                         break
 

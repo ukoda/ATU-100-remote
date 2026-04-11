@@ -208,6 +208,7 @@ void send_state(void)
         return;
     
     new_state = false;
+    lcd_ind();
     json_start();
     json_bool("Auto", g_b_Auto_mode);
     json_bool("Bypass", g_b_Bypas_mode);
