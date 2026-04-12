@@ -862,6 +862,48 @@ class atu100diag(object):
                 self.edit_value = self.atu.eeprom[self.edit_address]
 
 
+    def process_double_click(self, x, y):
+
+        # Auto tune toggle
+
+        if x > 0 and x < 21 and y == AUTO_R:
+            self.toggle_auto()
+
+        # Bypass toggle
+
+        elif x > 21 and x < 47 and y == BYPASS_R:
+            self.toggle_bypass()
+
+        # Start tune
+
+        elif x > 21 and x < 47 and y == TUNE_R:
+            self.start_tune()
+
+        # Toggle capacitor order
+
+        # Toggle inductor
+
+        elif x > 10 and x < 46 and y == 8:
+            relay = (x - 11) // 5
+            self.atu.relay_ind[relay] = not self.atu.relay_ind[relay]
+            logging.info(f'Inductor relay {relay} now {self.atu.relay_ind[relay]}')
+            self.atu.send_relay_inductors()
+            self.show_configuration(False)
+
+        # Toggle capacitor
+
+        elif x > 10 and x < 46 and y == 9:
+            relay = (x - 11) // 5
+            self.atu.relay_cap[relay] = not self.atu.relay_cap[relay] 
+            logging.info(f'Capacitor relay {relay} now {self.atu.relay_cap[relay]}')
+            self.atu.send_relay_capacitors()
+            self.show_configuration(False)
+
+        # Not a valid place to double click
+
+        else:
+            logging.info(f'Ignoring double click at {x}, {y}')
+
 
     def main(self, stdscr):
         self.mwin = stdscr
@@ -894,16 +936,10 @@ class atu100diag(object):
                 try:
                     event = curses.getmouse()
                     if event[4] == curses.BUTTON1_DOUBLE_CLICKED:
-                        if event[1] < (SDATA_FIRST + SDATA_FIRST_WIDTH):
-                            if event[2] == AUTO_R:
-                                self.toggle_auto()
-                        else:
-                            if event[2] == BYPASS_R:
-                                self.toggle_bypass()
-                            elif event[2] == TUNE_R:
-                                self.start_tune()
-                except:
-                    pass                                
+                        logging.debug(f'id {event[0]}, x {event[1]}, y {event[2]}, z {event[3]}')
+                        self.process_double_click(event[1], event[2])
+                except Exception as e:
+                    logging.warning(f'Mouse error {e}')
 
             else:
                 if self.edit_mode:

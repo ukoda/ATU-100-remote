@@ -109,16 +109,12 @@ class atu100(object):
 
         logging.info('Succefully connected to ATU-100')
 
-        # Load the JSON files
 
-        # try:
-        #     with open(self.args.scpidev) as json_file:
-        #         self.scpi_devices = json.load(json_file)
-        # except:
-        #     logging.error(f"Can't read {self.args.scpidev} SCPI devices file")
-        #     print(f"Can't read {self.args.scpidev} SCPI devices file.  Use find_devices.py to create it if missing")
-        #     exit(10)
-
+    def wait_name(self, name):
+        while True:
+            rxmsg = self.getmsg()
+            if rxmsg and name in rxmsg:
+                return rxmsg
 
 
     def sendbool(self, name, value):
@@ -148,6 +144,20 @@ class atu100(object):
         msg = f'{{"Set": {address}, "Value": {data}}}\n'
         self.ser.write(msg.encode('ascii'))
 
+
+    def send_relay_capacitors(self):
+        bit = 0x1
+        relaybits = 0
+        for relay in range(7):
+            if self.relay_cap[relay]:
+                relaybits += bit
+            bit *= 2
+        if self.relay_order:
+            relaybits += 128
+        self.sendint('RelayC', relaybits)
+        self.sendbool('Status', True)
+
+
     def send_relay_inductors(self):
         bit = 0x1
         relaybits = 0
@@ -158,11 +168,25 @@ class atu100(object):
         self.sendint('RelayI', relaybits)
         self.sendbool('Status', True)
 
+
+    def get_relay_capacitors(self):
+        self.geteepromdata(cell.EEPROM_LAST_SW)
+        self.wait_name('fd')
+        self.geteepromdata(cell.EEPROM_LAST_CAP)
+        self.wait_name('ff')
+
+
+    def get_relay_inductors(self):
+        self.geteepromdata(cell.EEPROM_LAST_IND)
+        self.wait_name('fe')
+
+
     def get_bcd(self, bcd):
         tens = bcd // 16
         units = bcd & 0xf
         return tens * 10 + units
-        
+
+
     def getmsg(self):
         result = None
         rxd = self.ser.read()
@@ -222,13 +246,13 @@ class atu100(object):
                                     elif cell_address == cell.EEPROM_LAST_IND:
                                         bit = 0x1
                                         for relay in range(7):
-                                            self.relay_ind[relay] = bit & cell_data
+                                            self.relay_ind[relay] = bool(bit & cell_data)
                                             bit *= 2
 
                                     elif cell_address == cell.EEPROM_LAST_CAP:
                                         bit = 0x1
                                         for relay in range(7):
-                                            self.relay_cap[relay] = bit & cell_data
+                                            self.relay_cap[relay] = bool(bit & cell_data)
                                             bit *= 2
 
                     return result
@@ -393,22 +417,40 @@ class atu100(object):
             self.sendstr('Dump', 'EEPROM')
 
         elif self.args.command == 'f':
-            print('Set capacitor first relay i.e CL')
-            self.sendint('RelayC', 0)
-            self.sendbool('Status', True)
+            print('Turn on capacitor first relay i.e CL')
+            self.get_relay_capacitors()
+            self.relay_order = False
+            self.send_relay_capacitors()
 
         elif self.args.command == 'l':
-            print('Set capacitor first relay i.e LC')
-            self.sendint('RelayC', 128)
-            self.sendbool('Status', True)
+            print('Turn off capacitor first relay i.e LC')
+            self.get_relay_capacitors()
+            self.relay_order = True
+            self.send_relay_capacitors()
+
+        elif self.args.command == 'c':
+            print(f'Turn off capacitor relay {self.args.relay}')
+            self.get_relay_capacitors()
+            self.relay_cap[int(self.args.relay)] = False
+            self.send_relay_capacitors()
+
+        elif self.args.command == 'C':
+            print(f'Turn on capacitor relay {self.args.relay}')
+            self.get_relay_capacitors()
+            self.relay_cap[int(self.args.relay)] = True
+            self.send_relay_capacitors()
 
         elif self.args.command == 'i':
             print(f'Turn off inductor relay {self.args.relay}')
-            self.geteepromdata(cell.EEPROM_LAST_IND)
+            self.get_relay_inductors()
+            self.relay_ind[int(self.args.relay)] = False
+            self.send_relay_inductors()
 
         elif self.args.command == 'I':
             print(f'Turn on inductor relay {self.args.relay}')
-            self.geteepromdata(cell.EEPROM_LAST_IND)
+            self.get_relay_inductors()
+            self.relay_ind[int(self.args.relay)] = True
+            self.send_relay_inductors()
 
         elif self.args.command == 'r':
             print('Reseting settings')
@@ -439,7 +481,7 @@ class atu100(object):
             self.sendbool('Status', True)
 
         #
-        # Loop processing key presses, send polls and update battery voltage etc
+        # Loop processing waiting for last message
         #
 
         while True:
@@ -474,19 +516,6 @@ class atu100(object):
                     for name in rxmsg:
                         print(f'{name} = {rxmsg[name]}')
                     break
-
-                # Turn on inductor relay
-
-                elif (self.args.command == 'i') or (self.args.command == 'I'):
-                    if 'fe' in rxmsg:
-                        logging.info(f'Inductor relays were {rxmsg["fe"]}')
-                        self.relay_ind[int(self.args.relay)] = self.args.command == 'I'
-                        self.send_relay_inductors()
-                    else:
-                        result = 'Power' in rxmsg
-                        self._print_msg(rxmsg)
-                        if result:
-                            break
 
                 else:
                     result = 'Power' in rxmsg
