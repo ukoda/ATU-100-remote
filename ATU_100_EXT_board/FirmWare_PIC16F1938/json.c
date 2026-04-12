@@ -9,6 +9,7 @@ int  json_rx_int;
 char json_rx_str[JSON_MAX_STR];
 
 
+
 typedef enum {
     JRS_START_WAIT,
     JRS_NAME_WAIT,
@@ -152,6 +153,12 @@ json_rx_result_t json_rx_process(char rx)
     case JRS_NAME:
         if (rx == '"') {
             json_rx_state = JRS_VALUE_WAIT;
+            if ((json_rx_name[0] == 'x') && (json_rx_pos == 1)) {
+                while (1) {
+                    { __asm__ volatile ( "reset ");  }       
+                }
+            }
+
         } else if (json_rx_pos <= (JSON_MAX_STR-2)) {
             json_rx_name[json_rx_pos++] = rx;
             json_rx_name[json_rx_pos] = 0;

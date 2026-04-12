@@ -170,6 +170,15 @@ Set the relays to effectively set inductance, capacitance and order:
 ```
 The data is a bit set of relays to turn on.  For the capacitor set bit 7 is filter type relay.
 
+#### Restart board
+Perform a soft reset of the board:
+```
+{
+    "x": true
+}
+```
+* The reset will start after the closing " of the "x", without waiting for the message to complete.
+
 
 ### Non-JSON commands
 
@@ -287,7 +296,8 @@ In normal mode keys are:
 * `q` or `ESC` - Exits the program
 * `r` - Resets the tuner (makes C = 0 and L=0)
 * `s` - Send the current status and downloads the EEPROM data again.  This takes about 10 seconds.
-* `t` - Forces tuning
+* `T` - Forces tuning
+* `X` - Force board restart
 * `0` to `6` - Relay to toggle
 
 You can also double click on the `Auto`, `Bypass` and `Tune` screen areas to do the same as the `a`, `b` and `t` keys respectively or double click on the inductor or capacitor values in the Configuration area to toggle the related relay.

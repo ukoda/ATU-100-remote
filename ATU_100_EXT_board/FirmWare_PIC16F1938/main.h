@@ -208,6 +208,8 @@ void get_pwr() {
 }
 
 void get_swr() {
+    uint32_t timeout = 0;
+
     get_pwr();
     if (g_char_p_cnt != 100) {
         g_char_p_cnt += 1;
@@ -233,7 +235,8 @@ void get_swr() {
         //
         if (Button(&PORTB, TUNE_BUTTON, 5, BUTTON_RELEASED))
             g_b_rready = 1;
-        if ((g_b_rready == 1) & Button(&PORTB, TUNE_BUTTON, 5, BUTTON_PRESSED)) { //  press button  Tune
+
+        if ((timeout++ > 7200) || ((g_b_rready == 1) & Button(&PORTB, TUNE_BUTTON, 5, BUTTON_PRESSED))) { //  press button  Tune
             show_reset();
             g_i_SWR = 0;
             return;

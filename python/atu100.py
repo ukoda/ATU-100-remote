@@ -140,6 +140,9 @@ class atu100(object):
         self.ser.write(msg.encode('ascii'))
 
 
+    def send_restart(self):
+        self.sendbool('x', True)
+
     def geteepromdata(self, address):
         msg = f'{{"Get": {address}}}\n'
         self.ser.write(msg.encode('ascii'))

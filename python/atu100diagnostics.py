@@ -135,7 +135,8 @@ class atu100diag(object):
                       " 'l'        - Toggle inductor relay\n"
                       " 'o'        - Toggle capacitior order\n"
                       " 'r'        - Reset tuner, C and L\n"
-                      " 't'        - Force tuning\n"
+                      " 'T'        - Force tuning\n"
+                      " 'X'        - Force board restart\n"
                       " '0' to '6' - Relay to toggle\n"
         )
         parser = argparse.ArgumentParser(prog='atu-100 diagnostics',
@@ -772,8 +773,11 @@ class atu100diag(object):
             self.atu.sendbool('Status', True)
             self.process_state = ProcessState.PS_WAIT_STATUS
 
-        elif key == ord('t'):
+        elif key == ord('T'):
             self.start_tune()
+
+        elif key == ord('X'):
+            self.atu.send_restart()
 
         elif key == ord('e'):
             self.edit_mode = True
@@ -796,7 +800,6 @@ class atu100diag(object):
 
         elif key >= ord('0') and key <= ord('6'):
             relay = key - ord('0')
-            logging.info(f'key {key} relay {relay}')
             if self.control_capacitor:
                 self.atu.relay_cap[relay] = not self.atu.relay_cap[relay] 
                 logging.info(f'Capacitor relay {relay} now {self.atu.relay_cap[relay]}')
@@ -919,9 +922,9 @@ class atu100diag(object):
 
         # Start tune
 
-        elif x > 21 and x < 47 and y == TUNE_R:
-            logging.info(f'Tuning started by double click at {x}, {y}')
-            self.start_tune()
+        # elif x > 21 and x < 47 and y == TUNE_R:
+        #     logging.info(f'Tuning started by double click at {x}, {y}')
+        #     self.start_tune()
 
         # Toggle capacitor order
 
