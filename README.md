@@ -280,13 +280,19 @@ There are two general mode:
 In normal mode keys are:
 * `a` - Toggles auto (automatic tuning)
 * `b` - Toggles bypass
+* `c` - Toggle capacitor relay
+* `l` - Toggle inductor relay
+* `o` - Toggle capacitior order
 * `e` - Enters edit mode
 * `q` or `ESC` - Exits the program
 * `r` - Resets the tuner (makes C = 0 and L=0)
 * `s` - Send the current status and downloads the EEPROM data again.  This takes about 10 seconds.
 * `t` - Forces tuning
+* `0` to `6` - Relay to toggle
 
-You can also double click on the `Auto`, `Bypass` and `Tune` screen areas to do the same as the `a`, `b` and `t` keys respectively.
+You can also double click on the `Auto`, `Bypass` and `Tune` screen areas to do the same as the `a`, `b` and `t` keys respectively or double click on the inductor or capacitor values in the Configuration area to toggle the related relay.
+
+**NB:** There appears to be issues with the mouse handling in the Cursors library that leads to bogus double click events.
 
 If you double click on an EEPROM cell value you will enter edit mode for it.
 
@@ -336,6 +342,22 @@ The new cells are:
 * `fd` - Last capacitor/inductor order.
 * `fe` - Last inductor, bit set of the inductors that where active.
 * `ff` - Last capacitor, bit set of the capacitors that where active.
+
+## Notes
+
+Temporary information.
+
+Order:
+* Hardware.  Relay off = NC = CL. Relay on = NO = LC.
+* Hardware.  Relay S8 controlled by RC0.
+* RC0 maps to Cap_sw.
+* Cap_sw is only set by set_sw().
+* set_sw() is always called as set_sw(g_c_SW).
+* g_c_SW is saved in EEPROM at EEPROM_LAST_SW.
+* So if:
+    * g_c_SW = 0 then CL
+    * g_c_SW = 1 then LC
+NB: For some reason relay S8 is on (LC) when in bypass mode.  While is should make no difference if it is on or off when all C and L relays are off, it seems a strange default choice.
 
 ## Acknowledgements
 

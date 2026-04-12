@@ -122,6 +122,8 @@ class atu100diag(object):
         self.edit_mode = False
         self.edit_address = 3
         self.edit_value = 0xff
+        self.control_capacitor = False
+        self.control_inductor = False
 
         # Get the command line args
 
@@ -129,8 +131,12 @@ class atu100diag(object):
                       " 'q' or ESC - exit\n"
                       " 'a'        - Toggle auto tunning\n"
                       " 'b'        - Toggle bypass\n"
+                      " 'c'        - Toggle capacitor relay\n"
+                      " 'l'        - Toggle inductor relay\n"
+                      " 'o'        - Toggle capacitior order\n"
                       " 'r'        - Reset tuner, C and L\n"
                       " 't'        - Force tuning\n"
+                      " '0' to '6' - Relay to toggle\n"
         )
         parser = argparse.ArgumentParser(prog='atu-100 diagnostics',
                                          description='Diagnostics program for ATU-100 tuner',
@@ -586,7 +592,11 @@ class atu100diag(object):
         self.cwin.addstr(row, CONFIG_FIRSTD, valstr, curses.color_pair(attr))
 
         if num_inductors > 0:
-            self.cwin.addstr(1, 1, 'Inds (nH): ')
+            if self.control_inductor:
+                attr = C_WARN_DATA
+            else:
+                attr = C_EMPTY_DATA
+            self.cwin.addstr(1, 1, 'Inds (nH): ', curses.color_pair(attr))
             for relay in range(num_inductors):
                 valstr = f'{self.atu.value_ind[relay]:>4}'
                 attr = iattr
@@ -602,7 +612,11 @@ class atu100diag(object):
             self.cwin.addstr(1, 1, 'Invalid number of inductors or spacing       ', curses.color_pair(C_BAD_DATA))
 
         if num_capacitors > 0:
-            self.cwin.addstr(2, 1, 'Caps (pf): ')
+            if self.control_capacitor:
+                attr = C_WARN_DATA
+            else:
+                attr = C_EMPTY_DATA
+            self.cwin.addstr(2, 1, 'Caps (pf): ', curses.color_pair(attr))
             for relay in range(num_inductors):
                 valstr = f'{self.atu.value_cap[relay]:>4}'
                 attr = iattr
@@ -766,6 +780,35 @@ class atu100diag(object):
             self.edit_value = self.atu.eeprom[self.edit_address]
             self.show_eeprom()
 
+        elif key == ord('c'):
+            self.control_capacitor = not self.control_capacitor
+            self.control_inductor = False
+            self.show_configuration(False)
+
+        elif key == ord('l'):
+            self.control_inductor = not self.control_inductor
+            self.control_capacitor = False
+            self.show_configuration(False)
+
+        elif key == ord('o'):
+            self.atu.relay_order = not self.atu.relay_order
+            self.atu.send_relay_capacitors()
+
+        elif key >= ord('0') and key <= ord('6'):
+            relay = key - ord('0')
+            logging.info(f'key {key} relay {relay}')
+            if self.control_capacitor:
+                self.atu.relay_cap[relay] = not self.atu.relay_cap[relay] 
+                logging.info(f'Capacitor relay {relay} now {self.atu.relay_cap[relay]}')
+                self.atu.send_relay_capacitors()
+                self.show_configuration(False)
+
+            elif self.control_inductor:
+                self.atu.relay_ind[relay] = not self.atu.relay_ind[relay]
+                logging.info(f'Inductor relay {relay} now {self.atu.relay_ind[relay]}')
+                self.atu.send_relay_inductors()
+                self.show_configuration(False)
+
         elif key != -1:                    # Not 'no key' - Show key usage
             logging.warning(f'Unknown normal key: {key}')
 
@@ -877,9 +920,14 @@ class atu100diag(object):
         # Start tune
 
         elif x > 21 and x < 47 and y == TUNE_R:
+            logging.info(f'Tuning started by double click at {x}, {y}')
             self.start_tune()
 
         # Toggle capacitor order
+
+        elif x > 40 and x <43 and y == ORDER_R:
+            self.atu.relay_order = not self.atu.relay_order
+            self.atu.send_relay_capacitors()
 
         # Toggle inductor
 

@@ -111,10 +111,15 @@ class atu100(object):
 
 
     def wait_name(self, name):
+        timeout = 0
         while True:
             rxmsg = self.getmsg()
             if rxmsg and name in rxmsg:
                 return rxmsg
+            timeout += 1
+            if timeout > 30:    # 3 Seconds
+                logging.warning(f'Timeout waiting for {name}')
+                return None
 
 
     def sendbool(self, name, value):
