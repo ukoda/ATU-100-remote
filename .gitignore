@@ -1,4 +1,5 @@
 ATU-100-remote.code-workspace
 *.log
 python/__pycache__
+*.backup
 

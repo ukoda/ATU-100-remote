@@ -9,7 +9,7 @@ The AUT-100 needs to be programmed with the hex file from
 https://github.com/ukoda/ATU-100-remote and the 3V TTL serial lines to wire to
 the board to allow comms with this program.
 
-This allows the excahnage of JSON format messages to control the ATU-100 and
+This allows the exchanage of JSON format messages to control the ATU-100 and
 show it's status.  The format of the JSON messages is documented in the file
 https://github.com/ukoda/ATU-100-remote/blob/master/README.md
 '''
