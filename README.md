@@ -189,12 +189,13 @@ From the original zsteva code, sent outside the `{}` brackets:
 * s - Send the current status
 * t - Forces tuning
 
-## Control programs
+## Control programs and utilites
 
 These are located in the `python` directory.
 * `atu100.py` - Simple command line interface and also core code imported by other programs.
 * `atu100remote.py` - Minimal ncurses program to show status and normal control.
 * `atu100diagnostics.py` - Ncurses program used for set up and testing.
+* `atu100hextojson.py` - Utility to extract EEPROM data as a JSON file from a hex file.
 
 **NB:** The ncurses programs should be exited using the 'q' or escape key, where supported, not using cntl-c, as the mouse event reporting will fill the terminal with rubbish related to the mouse movent.  Normal exit stops this activity.
 

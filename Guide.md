@@ -50,7 +50,7 @@ You will need:
 	4. Check your PC sees the PIC16 processor using: `	pk2cmd -PPIC16F1938 -I`
 	5. Download the full content of the PIC15 using: `pk2cmd -PPIC16F1938 -J -GFFull.hex`
 	6. You should now have a hex format file called `Full.hex`, save it somewhere so you can restore it later if you want.
-	7. Extract the EEPROM settings from the hex file so you can restore the afther the firmware has been updated. **TODO** Write a utility to do this.
+	7. Extract the EEPROM settings from the hex file so you can restore the after the firmware has been updated.
 2. Flash the new firmware into the ATU-100.  The firmware is in the same directory as this guide and has the name `ATU-100_remote_PIC16F1938_XXXXXXXX_YYYY.hex` where XXXXXXXX is that date and YYYY the time when the hex file was created.
 	1. Flash the new firmware using: `pk2cmd -B/your/path/to/pk2cmd/pk2cmd -PPIC16F1938 -FATU-100_remote_PIC16F1938_XXXXXXXX_YYYY.hex -E -M -J -R`
 3. Test the software is running:
