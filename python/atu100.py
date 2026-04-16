@@ -105,7 +105,8 @@ class atu100(object):
                     timeout=0.1) # default timeout for reading in seconds
         # exit if the port is not opened
         except serial.SerialException as e:
-            sys.exit(e)
+            print(f'Serial port fail: {e}')
+            sys.exit(10)
 
         logging.info('Succefully connected to ATU-100')
 
@@ -354,7 +355,7 @@ class atu100(object):
                       " 'B' - Enable bypass\n"
                       " 'c' - Capacitor relay on\n"
                       " 'C' - Capacitor relay off\n"
-                      " 'd' - Dump EEPROM contents\n"
+                      " 'd' - Download EEPROM contents from ATU-100\n"
                       " 'f' - Capacitor first\n"
                       " 'g' - Get an EEPROM cell\n"
                       " 'i' - Inductor relay off\n"
@@ -363,6 +364,7 @@ class atu100(object):
                       " 'r' - Reset tuner, C and L\n"
                       " 's' - Set an EEPROM cell\n"
                       " 't' - Force tuning\n"
+                      " 'u' - Upload EEPROM contents to ATU-100\n"
                       "If no command supplied will show current status\n"
                       "Address and data are assumed to be hex format\n"
         )
@@ -381,7 +383,7 @@ class atu100(object):
                                     help='Log level: debug|info(default)|warn|error|critical')
         parse_general.add_argument('--newlog', default=False, action='store_true', help = 'Create a new log file')
         parse_config = parser.add_argument_group('Config', 'EEPROM config options')
-        parse_config.add_argument('-s', '--savefile', default='', help = 'Optional file to save EEPROM dump data to')
+        parse_config.add_argument('-e', '--eepromfile', default='', help = 'EEPROM file anme for EEPROM dump or upload')
         parse_config.add_argument('-a', '--address', default='', help = 'EEPROM address for get or set commands')
         parse_config.add_argument('-d', '--data', default='', help = 'EEPROM data for set command')
         parse_config.add_argument('-r', '--relay', default=0, help = 'Relay number, 0 to 6')
@@ -421,9 +423,36 @@ class atu100(object):
             self.sendbool('Bypass', True)
 
         elif self.args.command == 'd':
-            print('Dumping EEPROM, this will take about 10 seconds')
+            print('Downloading EEPROM, this will take about 10 seconds')
             self.sendstr('Dump', 'EEPROM')
 
+        elif self.args.command == 'u':
+            if self.args.eepromfile == '':
+                print('Use the -e to specifiy the EEPROM JSON file to upload')
+                sys.exit(20)
+            try:
+                with open(self.args.eepromfile, 'r') as jsonfile:
+                    jsondata = jsonfile.read()
+                    upload = json.loads(jsondata)
+            except Exception as e:
+                print(f'EEPROM JSON file read error: {e}')
+                sys.exit(22)
+            print('Checking EEPROM, this will take about 10 seconds')
+            self.sendstr('Dump', 'EEPROM')
+            rxmsg = self.wait_name('ff')
+            if not 'ff' in rxmsg:
+                print('Failed to check existing EEPROM contents')
+                sys.exit(25)
+            print('Uploading changes')
+            for address in upload:
+                eepromaddress = int(address, 16)
+                if self.eeprom[eepromaddress] != int(upload[address], 16):
+                    print(f'  Cell {address}: {self.eeprom[eepromaddress]:02x} replaced with {upload[address]}')
+                    self.seteepromdata(eepromaddress, int(upload[address], 16))
+                    self.wait_name(address)
+            print('Upload complete')
+            return
+            
         elif self.args.command == 'f':
             print('Turn on capacitor first relay i.e CL')
             self.get_relay_capacitors()
@@ -473,16 +502,16 @@ class atu100(object):
         elif self.args.command == 'g':
             if self.args.address == '':
                 print('Use -a option to set address to get from')
-                sys.exit(10)
+                sys.exit(30)
             self.geteepromdata(int(self.args.address, 16))
 
         elif self.args.command == 's':
             if self.args.address == '':
                 print('Use -a option to set address to set data of')
-                sys.exit(10)
+                sys.exit(40)
             if self.args.data == '':
                 print('Use -d option to set data value to be set')
-                sys.exit(10)
+                sys.exit(50)
             self.seteepromdata(int(self.args.address, 16), int(self.args.data, 16))
 
         else:
@@ -505,10 +534,10 @@ class atu100(object):
 
                 if self.args.command == 'd':
                     print(json.dumps(rxmsg, indent=4))
-                    if self.args.savefile != '':
-                        with open(self.args.savefile, 'w') as jsonfile:
+                    if self.args.eepromfile != '':
+                        with open(self.args.eepromfile, 'w') as jsonfile:
                             jsonfile.write(json.dumps(rxmsg, indent=4))
-                        print(f'Saved to {self.args.savefile}')
+                        print(f'Saved to {self.args.eepromfile}')
                     break
 
                 # Get EEPROM cell

@@ -51,6 +51,7 @@ You will need:
 	5. Download the full content of the PIC15 using: `pk2cmd -PPIC16F1938 -J -GFFull.hex`
 	6. You should now have a hex format file called `Full.hex`, save it somewhere so you can restore it later if you want.
 	7. Extract the EEPROM settings from the hex file so you can restore the after the firmware has been updated.
+		1. `./atu100hextojson.py ../../ATU-100-backups/sma/backup/Full.txt saved.json`
 2. Flash the new firmware into the ATU-100.  The firmware is in the same directory as this guide and has the name `ATU-100_remote_PIC16F1938_XXXXXXXX_YYYY.hex` where XXXXXXXX is that date and YYYY the time when the hex file was created.
 	1. Flash the new firmware using: `pk2cmd -B/your/path/to/pk2cmd/pk2cmd -PPIC16F1938 -FATU-100_remote_PIC16F1938_XXXXXXXX_YYYY.hex -E -M -J -R`
 3. Test the software is running:
@@ -63,7 +64,4 @@ You will need:
 	6. `./atu100.py -p /dev/ttyUSB0`
 	7. You should now see the basic status report from the ATU-100.
 4. Restore the EEPROM settings you saved earlier:
-	1. ...
-
-
-.... Not complete yet ....
+	1. `./atu100.py -p /dev/ttyACM1 -c u -e saved.json`
